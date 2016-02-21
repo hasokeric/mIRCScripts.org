@@ -1,0 +1,43 @@
+alias holdem {
+  var %x 4,%y,%z 4111,%j,%s 0,%f,%d,%t,%R,%c 2 3 4 5 6 7 8 9 10 J Q K A
+  while %x {
+    %y = 13
+    while %y {
+      %t = $token(%c,%y,32)
+      %j = %j $+ $iif($istok($1,%t $+ $mid(DHSC,%x,1),32),1,0)
+      if (%x = 1) %d = %d $+ $count($1,%t)
+      dec %y
+    }
+    var %a = $mid(%j,-13),%b $base(%a,2,10)
+    %s = $or(%s,%b)
+    %@ = $base(%s,10,2,13)
+    if $pos(%a,11111) || $and(%z,%b) = %z {
+      %R = 120 - $replace($v1,%z,10)
+    }
+    if ($pos(%a,1,5)) %f = $calc(60+$base($left(%a,$v1) $+ $str(0,$calc(13-$v1)),2,10)/8192)
+    dec %x
+  }
+  if $count(%j,1) = 7 {
+    if (%R) return %R
+    if $pos(%d,4) {
+      return $calc(105-$v1 +2^-$iif($pos(%@,1) < $v1,$v1,$pos(%@,1,2)))
+    }
+    if $pos(%d,3) && ($pos(%d,3,2) || $pos(%d,2)) {
+      return $calc(90-$pos(%d,3)+2^-$v1)
+    }
+    if (%f) return %f
+    if $pos(%@,11111) || $and(%z,%s) == %z {
+      return $calc(60-$replace($v1,%z,10))
+    }
+    if $pos(%d,3) {
+      return $calc(45+(2^-$pos(%d,1)+2^-($pos(%d,1,2)+1))-$v1)
+    }
+    if $pos(%d,2) < $pos(%d,2,2) {
+      return $calc(30-$v1 -$v2 /13 +2^-(4+$iif($pos(%d,2,3) < $pos(%d,1),$v1,$v2)))
+    }
+    elseif $v1 {
+      return $calc(15+2^-$pos(%d,1)+2^-$pos(%d,1,2)+2^-$pos(%d,1,3)-$v1)
+    }
+    return $calc((%s -$base($mid(%@,$pos(%@,1,6)),2,10))/8192)
+  }
+}

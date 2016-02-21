@@ -1,0 +1,1 @@
+alias rps return $iif(? ? 2 iswm $1- $0,$calc($pos(rrsrsspspprp,$1 $+ $2)% 4-1),-1)

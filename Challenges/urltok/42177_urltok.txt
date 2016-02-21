@@ -1,0 +1,89 @@
+alias urltok {
+  if $calc($pos($1,$chr(63),1) + 1) == $pos($1,$chr(61),1) || $calc($pos($1,$chr(38),0) + 1) != $pos($1,$chr(61),0) || $pos($1,$chr(64),0) != 1 || $calc($pos($1,$chr(58),1) + 1) != $pos($1,$chr(47),1) || $pos($1,$chr(64)) < $pos($1,$chr(58),2) || $calc($pos($1,$chr(47),3) - $pos($1,$chr(58),3)) == 1 || $pos($1,$chr(35),0) != 1 || $pos($1,$chr(63),0) != 1 || $&
+    $pos($1,$chr(58),3) < $pos($1,$chr(64)) || $pos($1,$chr(47),3) < $pos($1,$chr(58),2) || $calc($pos($1,$chr(47),1) + 1) != $pos($1,$chr(47),2) || $pos($1,$chr(58)) > $pos($1,$chr(47)) || $pos($1,$chr(58),2) > $pos($1,$chr(58),2) || $pos($1,$chr(64),0) != 1 || $calc($pos($1,$chr(38),0) + 1) != $pos($1,$chr(61),0)  { return $null }
+  elseif $prop == protocol {
+    var %q = 1
+    while $mid($1,%q,1) != $chr(58) {
+      var %r = %r $+ $v1
+      inc %q
+    }
+    return %r
+  }
+  elseif $prop == user {
+    var %q = $pos($1,$chr(47),2) + 1
+    while ($mid($1,%q,1) != $chr(58)) {
+      var %r = %r $+ $v1
+      inc %q
+    }
+    return %r
+  }
+  elseif $prop == pass {
+    var %q = $pos($1,$chr(58),2) + 1
+    while $mid($1,%q,1) != $chr(64) {
+      var %r = %r $+ $v1
+      inc %q
+    }
+    return %r
+  }
+  elseif $prop == host {
+    var %q = $pos($1,$chr(64),1) + 1
+    while $mid($1,%q,1) != $chr(58) {
+      var %r = %r $+ $v1
+      inc %q
+    }
+    return %r
+  }
+  elseif $prop == port {
+    var %q = $pos($1,$chr(58),3) + 1
+    while $mid($1,%q,1) != $chr(47) {
+      var %r = %r $+ $v1
+      inc %q
+    }
+    return %r
+  }
+  elseif $prop == dir {
+    if $2 >= $calc($pos($1,$chr(47),0) - 1) return $null
+    elseif $2 == 0 { return $calc($pos($1,$chr(47),0) - 2) }
+    else {
+      var %q = $pos($1,$chr(47),$calc(2 + $2)) + 1
+      while $mid($1,%q,1) != $iif($2 == $calc($pos($1,$chr(47),0) - 2),$chr(63),$chr(47)) {
+        var %r = %r $+ $v1
+        inc %q
+      }
+      return %r
+    }
+  }
+  elseif $prop == val {
+    if $2 >= $calc($pos($1,$chr(61),0) + 1) { return $null }
+    elseif $2 == 0 { return $pos($1,$chr(61),0) }
+    else {
+      var %q = $pos($1,$chr(61),$2) + 1
+      while $mid($1,%q,1) != $iif($2 == $calc($pos($1,$chr(61),0) - 1),$chr(38),$chr(35)) {
+        var %r = %r $+ $v1
+        inc %q
+      }
+      return %r
+    }
+  }
+  elseif $prop == attr {
+    if $2 >= $calc($pos($1,$chr(38),0) + 2) { return $null }
+    elseif $2 == 0 { return $calc($pos($1,$chr(38),0) + 1) }
+    elseif $2 == 1 {
+      var %q = $pos($1,$chr(63),1) + 1
+      while $mid($1,%q,1) != $chr(61) {
+        var %r = %r $+ $v1
+        inc %q
+      }
+      return %r
+    }
+    elseif $2 <= $pos($1,$chr(61),0) {
+      var %q = $pos($1,$chr(38),1) + 1
+      while $mid($1,%q,1) != $chr(61) {
+        var %r = %r $+ $v1
+        inc %q
+      }
+      return %r
+    }
+  }
+  elseif $prop == anchor { return $mid($1,$pos($1,$chr(35))) }
+}

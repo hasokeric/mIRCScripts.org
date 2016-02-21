@@ -1,0 +1,9 @@
+alias inctext {
+  var %n $len($1) ,%E -26 ,%s
+  while %E && %n {
+    if ($mid($1,%n,1) != z) %E =
+    var %l $chr($calc($asc($v1)+1%E)) ,%s %l $+ %s
+    dec %n
+  }
+  if $1 isalpha return $iif(%E,%l,$left($1,%n)) $+ %s
+}
