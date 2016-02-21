@@ -1,0 +1,38 @@
+;Puke 1.01
+;Made by BlueThen on April 26, 2008.
+;To install, paste this snippet into your remotes (alt + r)
+;Then type /puke or right click the channel or status and click Puke.
+;Then type out how many particles you want (50 to 100 is recommended)
+;Bluethen.com :D
+menu channel,status {
+  Puke: { puke }
+}
+alias puke {
+  set %puke.t $?="Puke Particles:"
+  if (%puke.t > 300) { echo 4ERROR! (Either too many, or it's not a number) | halt }
+  window -paoCzdk0 +tnbL @Puke -1 -1 400 400 | window -poCzdhk0 +tnbL @puke.buf -1 -1 400 400
+  window -poCzdhk0 +tnbL @puke.buf2 -1 -1 400 400 | puke.init
+}
+alias -l puke.init {
+  %puke.x = %puke.t
+  while (%puke.x > 0) {
+    hadd -m %puke.x $+ y a $r(1,360) | hadd -m %puke.x $+ y s $r(5,10) | hadd -m %puke.x $+ y d $r(150,200) 
+    hadd -m %puke.x $+ y c $rgb($r(1,255) ,$r(1,255) ,$r(1,255)) | hadd -m %puke.x $+ y p $r(2,20) | dec %puke.x
+  }
+  puke.frame
+}
+on *:close:@puke: window -c @puke.buf | window -c @puke.buf2 | set %puke.c y | unset %puke.x %puke.t
+alias -l puke.frame {
+  if (%puke.c != y) {
+    clear @puke.buf | clear @puke.buf2 | drawfill @puke.buf2 0 0 1 1 1 | drawdot @puke.buf2 7 150 0 175
+    drawdot -r @puke.buf2 16777215 50 100 250 | drawdot -r @puke.buf2 16777215 37.5 62.5 125
+    drawdot @puke.buf2 1 20 62.5 125 | drawfill @puke.buf 0 0 1 1 1 | drawfill @puke 0 0 1 1 1 | %puke.x = %puke.t
+    drawtext @puke.buf 1 Tahoma 20 200 50 Made By BlueThen | drawtext @puke.buf 1 Tahoma 20 200 70 BlueThen.com  
+    while (%puke.x > 0) {
+      drawdot -r @puke.buf $hget(%puke.x $+ y ,c) $hget(%puke.x $+ y ,s) $calc(0 + ($hget(%puke.x $+ y ,d) * $cos($hget(%puke.x $+ y ,a)).deg)) $calc(400 + ($hget(%puke.x $+ y ,d) * $sin($hget(%puke.x $+ y ,a)).deg))
+      hinc %puke.x $+ y a $hget(%puke.x $+ y ,s) | dec %puke.x
+    }
+    drawcopy -mt @puke.buf2 16777215 0 0 400 400 @puke.buf 0 0 400 400 | drawcopy -m @puke.buf 0 0 400 400 @puke 0 0 400 400 | .timer -mo 1 0 puke.frame
+  }
+  else unset %puke.c
+}

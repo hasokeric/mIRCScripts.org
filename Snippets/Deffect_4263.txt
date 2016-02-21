@@ -1,0 +1,119 @@
+;Dialog Effect 1.0.1
+;Made by BlueThen on January 17, 2009.
+;To open, type /deffect or right click the channel/status and click "Deffect."
+;Controlled with mouse.
+dialog Deffect {
+  title "Deffect - BlueThen.com"
+  size -1 -1 200 200
+  check "", 1, 169 93.999925 13 13
+  check "", 2, 166.643725 75.348175 13 13
+  check "", 3, 159.72295 57.868375 13 13
+  check "", 4, 148.6726 42.6589 13 13
+  check "", 5, 134.18695 30.6754 13 13
+  check "", 6, 117.1762 22.670725 13 13
+  check "", 7, 98.70925 19.147975 13 13
+  check "", 8, 79.94635 20.328475 13 13
+  check "", 9, 62.0665 26.137975 13 13
+  check "", 10, 46.193125 36.211525 13 13
+  check "", 11, 33.323725 49.916125 13 13
+  check "", 12, 24.266725 66.3907 13 13
+  check "", 13, 19.591375 84.600025 13 13
+  check "", 14, 19.591375 103.40005 13 13
+  check "", 15, 24.2668 121.609375 13 13
+  check "", 16, 33.323725 138.08395 13 13
+  check "", 17, 46.1932 151.78855 13 13
+  check "", 18, 62.066575 161.862025 13 13
+  check "", 19, 79.946425 167.671525 13 13
+  check "", 20, 98.709325 168.852025 13 13
+  check "", 21, 117.176275 165.3292 13 13
+  check "", 22, 134.187025 157.3246 13 13
+  check "", 23, 148.672675 145.341025 13 13
+  check "", 24, 159.723025 130.13155 13 13
+  check "", 25, 166.643725 112.65175 13 13
+  check "", 26, 154 93.99994 13 13
+  check "", 27, 151.06336 75.45892 13 13
+  check "", 28, 142.54096 58.73284 13 13
+  check "", 29, 129.26704 45.45892 13 13
+  check "", 30, 112.54096 36.93658 13 13
+  check "", 31, 93.99994 34 13 13
+  check "", 32, 75.45892 36.93664 13 13
+  check "", 33, 58.73284 45.45898 13 13
+  check "", 34, 45.45898 58.7329 13 13
+  check "", 35, 36.93658 75.45904 13 13
+  check "", 36, 34 94.00006 13 13
+  check "", 37, 36.93664 112.54108 13 13
+  check "", 38, 45.45898 129.26716 13 13
+  check "", 39, 58.7329 142.54102 13 13
+  check "", 40, 75.45898 151.06342 13 13
+  check "", 41, 94 154 13 13
+  check "", 42, 112.54102 151.06336 13 13
+  check "", 43, 129.2671 142.54102 13 13
+  check "", 44, 142.54102 129.2671 13 13
+  check "", 45, 151.06342 112.54102 13 13
+  check "", 46, 139 93.999955 13 13
+  check "", 47, 135.109525 75.69679 13 13
+  check "", 48, 124.11085 60.55843 13 13
+  check "", 49, 107.90572 51.202435 13 13
+  check "", 50, 89.296195 49.24651 13 13
+  check "", 51, 71.499955 55.028875 13 13
+  check "", 52, 57.594235 67.549675 13 13
+  check "", 53, 49.98334 84.644005 13 13
+  check "", 54, 49.983385 103.35604 13 13
+  check "", 55, 57.594235 120.45037 13 13
+  check "", 56, 71.5 132.97117 13 13
+  check "", 57, 89.29624 138.75349 13 13
+  check "", 58, 107.905765 136.79752 13 13
+  check "", 59, 124.110895 127.441525 13 13
+  check "", 60, 135.109525 112.303165 13 13
+  check "", 61, 124 93.99997 13 13
+  check "", 62, 118.27048 76.36642 13 13
+  check "", 63, 103.27048 65.46829 13 13
+  check "", 64, 84.72946 65.46832 13 13
+  check "", 65, 69.72949 76.36645 13 13
+  check "", 66, 64 94.00003 13 13
+  check "", 67, 69.72949 111.63358 13 13
+  check "", 68, 84.72949 122.53171 13 13
+  check "", 69, 103.27051 122.53168 13 13
+  check "", 70, 118.27051 111.63355 13 13
+  check "", 71, 109 93.999985 13 13
+  check "", 72, 98.63524 79.734145 13 13
+  check "", 73, 81.864745 85.183225 13 13
+  check "", 74, 81.864745 102.81679 13 13
+  check "", 75, 98.635255 108.26584 13 13
+
+  scroll "", 76, 0 3 200 16, horizontal top range 1 200
+  scroll "", 77, 0 182 200 16, horizontal top range 1 200
+  scroll "", 78, 0 21 18 156, left range 1 200
+  scroll "", 79, 182 22 18 156, left range 1 200
+}
+menu channel,status {
+  Dialog Effect: deffect 
+}
+alias deffect {
+  dialog -m deffect deffect | %dfct.id = 0 | %dfct.x = 5
+  while (%dfct.x) {
+    %dfct.y = $calc(%dfct.x * 5) | %dfct.z = 360/ %dfct.y
+    while (%dfct.y) {
+      inc %dfct.id
+      hadd -m dfct.x %dfct.id $+ s $calc(94 + ((%dfct.x * 15) * $cos($calc(%dfct.y * %dfct.z)).deg))
+      hadd -m dfct.y %dfct.id $+ s $calc(94 + ((%dfct.x * 15) * $sin($calc(%dfct.y * %dfct.z)).deg))
+      dec %dfct.y
+    }
+    dec %dfct.x
+  }
+}
+on *:dialog:deffect:mouse:0: {
+  %dfct.s = 75
+  while (%dfct.s) {
+    did $+(-, $iif($dfct.d($mouse.x, $mouse.y, $hget(dfct.x, %dfct.s $+ s), $hget(dfct.y, %dfct.s $+ s)) < 30, c, u)) deffect %dfct.s
+    did $+(-, $iif($dfct.d($mouse.x, $mouse.y, $hget(dfct.x, %dfct.s $+ s), $hget(dfct.y, %dfct.s $+ s)) < 50, e, b)) deffect %dfct.s
+    dec %dfct.s
+  }
+  %dfct.j = 4
+  while (%dfct.j) {
+    did -c deffect $calc(75 + %dfct.j) $iif(%dfct.j > 2, $mouse.y, $mouse.x)
+    dec %dfct.j
+  }
+}
+alias -l dfct.d return $sqrt($calc(($3 - $1)^2 + ($4 - $2)^2))
+on *:dialog:Deffect:close:0: unset %dfct.*

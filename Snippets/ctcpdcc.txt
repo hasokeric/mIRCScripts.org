@@ -1,0 +1,205 @@
+CTCP and DCC Protocol Questions
+Version 1.0 written by LGM
+===============================
+
+*	What does "CTCP" stand for?
+*	Why is it called Client to Client Protocol?
+*	How does it work?
+*	What are the common CTCP commands?
+*	Why don't some IRC clients support all these?
+*	How do I send a CTCP command?
+*	What is a CTCP flood?
+*	How do CTCP floods work?
+*	What about DCC?
+*	What can I do if I want more information on CTCP?
+*	Summary
+
+===============================
+
+Q: What does CTCP stand for?
+
+CTCP stands for Client To Client Protocol. This is not to be 
+confused with the CCCP ;)
+
+Q: Why is it called Client to Client Protocol?
+
+Because it is sent and interpreted by your IRC client. The 
+IRC server has nothing to do with CTCP. It treats a CTCP 
+message as just another /msg to someone.  Unlike other 
+commands, for example /whois.
+
+Q: How does it work?
+
+In CTCP, there are two forms of communication:  COMMAND and 
+REPLY.  Commands are sent as follows:
+
+PRIVMSG ((target):^A ((command>) ((value)^A, where
+* ^A      = ASCII Character 1
+* command = CTCP command
+* value   = value to be processed by the target's client
+
+And REPLIES in this format:
+
+NOTICE ((target):^A  ((command) ((value)^A, where
+* ^A      = ASCII Character 1 
+* command = CTCP command
+* value   = value to be processed by the target's client
+
+For example, a ping of channel #xphiles would be:
+
+PRIVMSG #xphiles :^APING 866780265^A
+
+This message would be received by all the people on channel 
+#xphiles but yourself. They would all get this:
+
+:LGM!duck@opera.iinet.net.au PRIVMSG #xphiles :^APING 866780265^A
+
+For example, a reply to this ping would be:
+
+NOTICE LGM :^APING 866780265^A
+
+This message would be received by LGM like this:
+
+ :Skinner!sjm076@ppp-per-217.ca.com.au NOTICE LGM :^APING 866780265^A
+
+LGM's client would then interpret this as being a reply to 
+a PING and process it accordingly, in this case, taking the 
+timestamp (866780265) and subtracting it from the current timestamp.
+
+Q: What are the common CTCP commands?
+
+CLIENTINFO, ACTION, DCC, ERRMSG, FACE, FINGER, PING, SOUND, 
+SOURCE, TIME, USERINFO, VERSION, and XDCC.
+
+Briefly, this is what each command does:
+
+CLIENTINFO --  Display valid CTCP commands for that client.
+
+ACTION --  when you type /me does this, it is actually sent 
+as a CTCP message.  However, unlike other CTCP commands, it 
+does not require a REPLY, and none should be given.
+
+DCC -- DCC is established by CTCP, however it is not conducted 
+over CTCP.  See the section on DCC for more information on this 
+protocol.
+
+ERRMSG -- Reply to unknown CTCP command.
+
+FACE -- Pictographic 32x32 pixel representation of user 
+(Macintosh clients only).
+
+FINGER --  Shows idletime of client, usually with an e-mail 
+address and message.
+
+PING -- Used to measure lag, or the time it takes for information 
+to travel between servers.
+
+SOUND -- Causes the client(s) that receive it to play a sound file.
+
+SOURCE -- A URL where the client/script can be obtained.
+
+TIME --  Local time of recipient.
+
+USERINFO -- Shows a "witty" saying set by user.
+
+VERSION -- Replies with IRC client version.
+
+Q: Why don't some IRC clients support all these?
+
+Because they don't basically ;) However, nearly every IRC 
+client will support CLIENTINFO, which shows what commands that 
+client supports.
+
+Q: How do I send a CTCP command?
+
+/CTCP ((target) ((command) is implemented in nearly every IRC 
+client.  For those that it isn't, usually commands like 
+/version ((target), /ping ((target), etc., are. The exception 
+to this is PING, which is usually done by /ping ((target) 
+(or /cping ((target) in ircle).
+
+Q: What is a CTCP flood?
+
+It is when someone maliciously makes your client reply to CTCP 
+messages with the purpose of making you disconnect from the 
+IRC server.
+
+Q: How do CTCP floods work?
+
+Most servers are set up to allow you receive more data than 
+you can send; therefore some commands such as CLIENTINFO can 
+be used to disconnect you.
+
+The command to make your client reply to a CLIENTINFO is 
+12 characters (plus source/target information), while the 
+reply to CLIENTINFO may be 100 - 200 characters.  You will 
+be disconnected with the message "Excess Flood."
+
+Q: What about DCC?
+
+DCC is started by a CTCP command.  However, once it is started, 
+it is conducted totally independant of the IRC server.  For 
+example, to start a DCC chat connection, the originator of the 
+request (whoever typed /dcc chat ((nick)] will send something 
+like this:
+
+PRIVMSG ((target) :^ADCC CHAT ((type) ((longip) ((port)^A
+
+*  ^A   = ASCII Character 1 
+*  type = Either Chat or Talk, but almost always Chat these days
+*  longip  = 32-bit Internet address of originator's machine
+*  port    = Port on which the originator is waitng for a DCC chat
+
+The person I want to DCC chat would get this:
+
+:LGM!duck@opera.iinet.net.au PRIVMSG SomeOne :^ADCC CHAT 
+CHAT 3406736986 2094^A
+
+From this, their IRC client would know that the machine with 
+address 3406736986 is ready to accept a DCC chat connection on 
+port 2094.  The IRC client of the target of the DCC chat would 
+then establish a connection to port 2094 of machine 3406736986 
+if the DCC chat was accepted.
+
+DCC file sends are similar to DCC chat requests, but follow the 
+format below:
+
+PRIVMSG ((target) :^ADCC SEND ((filename) ((longip) ((port) 
+((filesize)^A, where
+
+*  ^A = ASCII Character 1 
+*  filename = Name of file being sent
+*  longip   = 32-bit Internet address of originator's machine
+*  port     = Port on which the originator is waiitng for a DCC chat
+*  filesize = Size of file being sent
+
+The person I want to send a file to would get this:
+
+:LGM!duck@opera.iinet.net.au PRIVMSG Someone :^ADCC SEND 
+CTCP_and_DCC 3406736986 2097 4509^A
+
+From this, their IRC client would know that the machine with 
+address 3406736986 is ready to send a file named "CTCP_and_DCC" 
+that is 4509 bytes long on port 2097. The IRC client of the 
+target of the DCC send would then establish a connection to 
+port 2097 of machine 3406736986 if the DCC send was accepted.
+
+Q: What can I do if I want more information on CTCP?
+
+The Undernet Doco-Com website at http://www.doco-com.undernet.org
+has the real RFC for both the DCC and CTCP protocols, if you 
+are interested in referring to these technical documents.
+
+Summary:
+
+CTCP commands are sent as privmsgs.  CTCP replies are sent 
+as notices.
+
+CTCP commands and replies are in the format of 
+((privmsg/notice) ((target):^A((command) ((arguments)^A.
+
+=================================================
+Copyright © 1997 Undernet User Committee
+
+
+

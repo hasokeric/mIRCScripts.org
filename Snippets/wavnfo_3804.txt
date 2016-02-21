@@ -1,0 +1,69 @@
+; $wavnfo by Nibato
+; ----------
+; This snippet will extract information from a PCM wav file's header.
+; This ONLY works on uncompressed PCM *.WAV files (which makes up the majority)
+; ----------
+; Syntax: $wavnfo(<filename>).<prop>
+;
+; <prop> can be any of the following:
+;    Channels
+;    SampleRate
+;    BlockAlignment
+;    BitsPerSample
+;    DataSize
+;    BytesPerSecond
+;    SongLength
+;
+; Alternative Syntax: /wavnfo <filename>
+; 
+; Outputs various information about the wav file specified.
+;----------
+
+
+; This converts little endian binary data into an integar, it's used by $wavnfo
+alias -l little_endian {
+  var %out, %i = $numtok($1,32)
+  while (%i > 0) {
+    %out = $+(%out,$base($gettok($1,%i,32),10,16,2))
+    dec %i
+  }
+  return $base(%out,16,10)
+}
+
+alias wavnfo {
+  ; Don't forgot the parameters :P
+  if ($0 < 1) { echo $color(info) -s * $wavnfo Insufficient Parameters | return }
+
+  ; Make sure we're using an appropriate filename string
+  var %wavfile = $+(",$remove($1-,"),")
+
+  ; Make sure the file exists
+  if (!$isfile(%wavfile)) { echo $color(info) -s * $wavnfo File not found: %wavfile | return }
+
+  ; Load the RIFF Chunk, Format Chunk, and the first part of the Data Chunk
+  bread %wavfile 0 44 &wav
+
+  ; Make sure this is actually a wav file
+  if ($+($bvar(&wav,1,4).text,$bvar(&wav,9,16).text,$bvar(&wav,37,4).text) != RIFFWAVEfmt data) { echo $color(info) -s * $wavnfo Unsupported WAV Format: %wavfile | return }
+
+  ; Get all the data we need here
+  var %Channels = $little_endian($bvar(&wav,23,2))
+  var %SampleRate = $little_endian($bvar(&wav,25,4))
+  var %BlockAlignment = $little_endian($bvar(&wav,33,2))
+  var %BitsPerSample = $little_endian($bvar(&wav,35,2))
+  var %DataSize = $little_endian($bvar(&wav,41,4))
+  var %BytesPerSecond = $calc(%SampleRate * %BitsPerSample * %Channels)
+  var %SongLength = $calc(%DataSize / (%SampleRate * %BlockAlignment))
+
+
+  if ($isid) {
+    ; Check to see if we're using a valid identifier property
+    if ($istok(Channels SampleRate BlockAlignment BitsPerSample DataSize BytesPerSecond SongLength,$prop,32)) {
+      return $eval(% $+ $prop,2)
+    }
+  }
+  else {
+    echo $color(info) -a *  $+(",$nopath(%wavfile),") information: $+(%BitsPerSample,bit) - $iif(%Channels == 1,Mono,Stereo) - $+(%SampleRate,Hz) - $+($calc(%BytesPerSecond /1000),kbps) - Song Length: $duration(%SongLength)
+  }
+
+}

@@ -1,0 +1,113 @@
+/*
+** mirc_escape()
+**  By Reko Tiira [ ramirez ] (c) 2007
+**     - E-mail: ramirez@whahay.net
+**
+** This is a C++ function that simply escapes a string so
+** that it can be used as a literal string within mIRC.
+** This function is useful for eg. DLL developers that
+** want to evaluate identifiers via SendMessage/DDE APIs
+** but might have to deal with character data that contain
+** special mIRC characters that'd make mIRC act in an
+** unwanted behaviour.
+**
+** To use the function simply include this file (mirc_escape.h)
+** and call mirc_escape with the string you want to escape.
+** Both, the parameter and the return value is std::string
+**
+** I originally wrote this function while I was developing
+** mIRC SQLite addon, because registered custom functions
+** evaluated mIRC aliases with data queried from a database,
+** but there was no telling what characters that data contained.
+** For example the data might've contained commas that would've made
+** mIRC evaluate them as seperate parameters instead of a continuous
+** literal string, which obviously would've resulted in very weird
+** behaviour. The use of this function _are_ kind of limited, but
+** if you've ever bumped to a such situation that I described,
+** I'm sure that you realise what this function is useful for.
+**
+** This function uses the standard library of C++, so you need to
+** link your application/library against it to use this.
+**
+** Here's an example (just a simple application to show how it works):
+**
+** #include <iostream>
+** #include "mirc_escape.h"
+**
+** int main() {
+**   const char *str = "var %rand = %dyn. [ $+ [ $rand(%min, %max) ] ]";
+**   std::cout << mirc_escape(str) << std::endl;
+** }
+**
+** It outputs this:
+**  var % $+ rand = % $+ dyn. $chr(91) $ $+ + $chr(91) $ $+ rand(%min $+ $chr(44) % $+ max) $chr(93) $chr(93)
+*/
+
+#ifndef _H_MIRC_ESCAPE_
+#define _H_MIRC_ESCAPE_
+
+#include <sstream>
+#include <string>
+
+std::string mirc_escape(std::string escape)
+{
+    std::ostringstream out;
+    char prev = 0, prev2;
+    bool need_concat = false, open_bracket = false;
+    for (std::string::iterator i = escape.begin(); i != escape.end(); i++)
+    {
+        if (need_concat)
+        {
+            if (*i != ' ') out << " $+ ";
+            need_concat = false;
+        }
+        if (open_bracket)
+        {
+            if (!((*i == '[' || *i == ']') && (prev2 == ' ' || prev2 == '\0') && prev == *i))
+            {
+                if (*i != ' ') out << prev;
+                else
+                {
+                    if (prev == prev2) out << "$chr(" << (int)prev2 << ") $+ $chr(" << (int)prev << ")";
+                    else out << "$chr(" << (int)prev << ")";
+                }
+                open_bracket = false;
+            }
+        }
+        switch (*i)
+        {
+            case ',':
+                if (prev == ' ') out << "$chr(44)";
+                else out << " $+ $chr(44)";
+                need_concat = true;
+                break;
+            case '[':
+            case ']':
+            case '{':
+            case '}':
+                if (!open_bracket)
+                {
+                    if (prev == ' ' || prev == '\0') open_bracket = true;
+                    else out << *i;
+                }
+                break;
+            default:
+                if ((prev == '%' || prev == '$') && (prev2 == ' ' || prev2 == '\0') && *i != ' ')
+                {
+                    out << " $+ ";
+                    out << *i;
+                }
+                else out << *i;
+        }
+        prev2 = prev;
+        prev = *i;
+    }
+    if (open_bracket)
+    {
+        if (prev == prev2) out << "$chr(" << (int)prev2 << ") $+ $chr(" << (int)prev << ")";
+        else out << "$chr(" << (int)prev << ")";
+    }
+    return out.str();
+}
+
+#endif

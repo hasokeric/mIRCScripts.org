@@ -1,0 +1,159 @@
+; Famous Birthdays
+; by Jagfire
+; Based on the date you input, this will return famous birthdays that occured on that day.
+; Use /bd -t for today's date
+; Use /bd to open the dialog and select the date, or you can use /bd <month> <day>
+; Month should be in full-length format, or the first 3 letters (For example, you can use January or Jan, September or Sep)
+; Example: /bd Jan 1
+
+alias bd {
+  if ($mon.check($1)) && ($2 isnum 1-31) && (-t != $1) {
+    sockopen bdsock www.on-this-day.com 80
+    set %bd.month $1
+    set %bd.day $b.day($2)
+    dialog -m bd2 bd2
+    set %swbd off
+    halt
+  }
+  if (!$1) {
+    dialog -m bd bd
+    halt
+  }
+  if (-t == $1) && (!$2-) {
+    sockopen bdsock www.on-this-day.com 80
+    set %bd.month $asctime(mmm)
+    set %bd.day $asctime(dd)
+    dialog -m bd2 bd2
+    set %swbd off
+    halt
+  }
+  else {
+    y Incorrect syntax. /bd or /bd <month> <day>
+    y Month should be in full-length format, or the first 3 letters (For example, you can use January or Jan, September or Sep)
+    y The day should also be a number between 1 and 31, but it can differ depending which month you choose.
+  }
+}
+alias -l fillmonths {
+  did -a bd 1 January
+  did -a bd 1 February
+  did -a bd 1 March
+  did -a bd 1 April
+  did -a bd 1 May
+  did -a bd 1 June
+  did -a bd 1 July
+  did -a bd 1 August
+  did -a bd 1 September
+  did -a bd 1 October
+  did -a bd 1 November
+  did -a bd 1 December
+}
+
+alias -l y echo -tmfi2a $1-
+alias -l b.day {
+  if ($len($1) == 1) && ($1 isnum 1-9) {
+    return $+(0,$1)
+  }
+  else return $1-
+}
+alias -l handle_ {
+  var %' = 1, %x
+  while (%' <= $numtok($1-,32)) {
+    %x = $eval($+($,%'),3)
+    if ($len(%x) == 4) && (%x isnum) {
+      if (!%-) && (!$didwm(bd2,2,$+(*,$eval( $+($,1-,%'),3),*))) { 
+        did -a bd2 2 $$iif( $numtok( $eval( $+($,1-,%'),3) ,32) < 5,$eval( $+($,1-,%'),3)) 
+        set %-2 %'
+      }
+      if (%-) && (!$didwm(bd2,2,$+(*,$eval($+($,$calc(%-2 +1),-,%'),3),*))) {
+        did -a bd2 2 $$iif($numtok($eval($+($,$calc(%-2 +1),-,%'),3),32) < 5,$eval($+($,$calc(%-2 +1),-,%'),3))
+      }
+    }
+    inc %'
+  }
+  unset %-
+}
+alias -l e {
+  var %x, %i = $regsub($1-,/(^[^<]*>|<[^>]*>|<[^>]*$)/g,$null,%x), %x = $remove(%x,&nbsp;,birthdays)
+  return %x
+}
+alias -l mon.check {
+  var %' = January February March April May June July August September October November December, %x = Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
+  if ($istok(%',$1,32)) || ($istok(%x,$1,32)) {
+    return $true
+  }
+  else {
+    return $false
+  }
+}
+
+;
+
+on *:dialog:bd:init:0:{
+  fillmonths
+  did -c bd 1 1
+}
+on *:dialog:bd:sclick:5:{
+  if ($did($dname,2) isnum 1-31) {
+    sockopen bdsock www.on-this-day.com 80
+    set %bd.month $did($dname,1)
+    set %bd.day $b.day($did($dname,2))
+    set %swbd off
+    dialog -m bd2 bd2
+    dialog -x bd bd
+    halt
+  }
+  else {
+    var %' = $input(The "day" field must be a number from 1 to 31.,wo,Error)
+    halt
+  }
+}
+on *:dialog:bd2:sclick:4:clipboard $$did($dname,2).seltext
+on *:dialog:bd2:init:0:dialog -t bd2 On %bd.month %bd.day
+on *:dialog:bd2:sclick:3:sockclose bdsock
+
+dialog bd {
+  title "Birthday Events"
+  size -1 -1 192 51
+  option pixels
+  combo 1, 3 4 120 164, size drop
+  edit "24", 2, 122 3 28 23, limit 2
+  text "Day", 3, 125 28 25 16, center
+  text "Month", 4, 4 28 118 16, center
+  button "G&o", 5, 151 3 37 23
+}
+dialog bd2 {
+  title "On this day..."
+  size -1 -1 306 218
+  option pixels
+  box "Birthdays", 1, 0 0 305 188
+  list 2, 5 15 294 168, sort size hsbar vsbar
+  button "&Ok", 3, 145 193 75 23, cancel
+  button "Clip&board", 4, 65 193 75 23
+}
+on *:sockopen:bdsock:{ 
+  sockwrite -n $sockname GET /onthisday/thedays/birthdays/ $+ $lower($left(%bd.month,3)) $+ %bd.day $+ .htm HTTP/1.1 
+  sockwrite -nt $sockname Connection: Keep-alive  
+  sockwrite -n $sockname Host: on-this-day.com $+ $crlf $+ $crlf
+}
+on *:sockclose:bdsock:unset %bd.*
+on *:sockread:bdsock:{
+  if ($sockerr) {
+    did -ra bd2 2 There was an error with the connection.
+    halt
+  }
+  else {
+    var %bd
+    sockread %bd
+    if (*<FONT SIZE=+3>Birthdays</FONT>* iswm %bd) && (%swbd == off) { 
+      set %swbd on
+    }
+    if (%swbd == on) && ($e(%bd)) && (<br>* iswm %bd) {
+      handle_ $e(%bd)
+    }
+    if (<script language="javascript" type="text/javascript*</script>* iswm %bd) && (%swbd == on) {
+      sockclose bdsock
+      set %swbd off
+      halt
+    }
+  }
+}

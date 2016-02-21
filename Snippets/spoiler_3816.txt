@@ -1,0 +1,45 @@
+; myndzi 07/19/2007
+; 1.0
+
+; /spoiler
+; use synonymously to /echo
+; surround text to be spoilered with <spoiler></spoiler>
+alias spoiler {
+  var %c, %sw, %cn
+  if ($1 isnum) { %c = $1 | tokenize 32 $2- }
+  if (-* iswm $1) { %sw = $2 | tokenize 32 $2- }
+  if (c isin %sw) { if ("*"* iswm $1-) { %cn = $gettok($1-, 1, 34) | tokenize 32 $gettok($1-, 2-, 34) } | else { %cn = $1 | tokenize 32 $2- } }
+  else { %sw = -c $+ $mid(%sw, 2) }
+  if (%cn) %c = $color(%cn).dd
+  elseif (%c == $null) %c = $color(Normal text)
+
+  %cn = "Gray text"
+
+  %c = $base(%c, 10, 10, 2)
+
+  echo %sw %cn $chr(3) $+ 83,80 $+ $chr(15) $+ $chr(3) $+ %c $+ $regsubex(spoiler, $1-, /<spoiler>(.*?)<\/spoiler>/ig, $spoilerize(\t, %c))
+}
+
+alias -l spoilerize {
+  var %gt = $color(Gray text).dd, %nt = $chr(15) $+ $chr(3) $+ $2, %st = $chr(3) $+ 99, $+ %gt, %ot = $chr(3) $+ $2 $+ , $+ %gt, %sp = $chr(3) $+ %gt $+ , $+ %gt $+ _ $+ %st
+  return $+(%ot, $chr(91), Spoiler:, %sp, %st, $regsubex(spoilerize, $strip($1), /\x20(\x20*)/g, %sp $+ $str(_, $len(\t))), %ot, $chr(93), %nt)
+}
+
+on ^*:hotlink:*[Spoiler*]*:*:if (83,80* iswm $hotline) spoil | halt
+
+alias -l unspoil {
+  if (%graytext% isnum) {
+    if (%mouse% == $mouse.x $mouse.y) return
+    .timerunspoil off
+    color "Gray text" %graytext%
+    unset %graytext% %mouse%
+  }
+}
+alias -l spoil {
+  %mouse% = $mouse.x $mouse.y
+  if (%graytext% !isnum) {
+    %graytext% = $color(Gray text)
+    color "Gray text" $color(Normal text)
+    .timerunspoil -mo 0 200 unspoil
+  }
+}

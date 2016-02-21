@@ -1,0 +1,14 @@
+; Strips html code, everything inside <brackets>. 
+; Usage: $striphtml(html code)
+; Paste it to your alias section :)
+
+striphtml {
+  if ($1) {
+    var %strip,%parm = <> $remove($1-,> <,><,$chr(9)) <>,%n = 2
+    while ($gettok($gettok(%parm,%n,62),1,60)) {
+      %strip = %strip $ifmatch
+      inc %n
+    }
+    return %strip
+  }
+}

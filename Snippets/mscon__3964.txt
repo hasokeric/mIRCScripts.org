@@ -1,0 +1,27 @@
+;; 	$mscon stands for multi-scon, meaning that you can return the scon for multiple networks at a time
+;;	Syntax: 
+;;		$mscon(N/Network,N*/Network)[.prop]
+;;		N/Network can obviously be specified multiple times
+;;		[.prop] is the scon property you want. If you don't scecify a property, it will just return the cid.
+;;	Examples:
+;;		Rizon is my first network, DALnet is my second network, and Undernet is my third network using the nick toggle^
+;;		$mscon(1,2,3).me would toggle^ toggle^ toggle^
+;;		$mscon(1,2,3).network would return Rizon DALnet Undernet
+;;		$mscon(Rizon,Undernet,Dalnet).cid would return 1 3 2 
+;;		$mscon(Rizon,Dalnet,Undernet) would return 1 2 3
+;;	Made by toggle^
+
+alias mscon { 
+  if ($0) {
+    var %x = 1, %t, %ret
+    while (%x <= $0) { 
+      %t = $($+($,%x),2) 
+      if (%t isalpha && $scid(%t)) { %ret = %ret $($+($,scon($scid(%t)),.,$iif($prop,$v1,cid),2) }
+      elseif ($regex(%t,/(\d+)/) && $scon(%t)) { %ret = %ret $($+($,scon(%t),.,$iif($prop,$v1,cid)),2) }
+      else goto i
+      :i
+      inc %x
+    }
+    return %ret
+  }
+}

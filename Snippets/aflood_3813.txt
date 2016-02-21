@@ -1,0 +1,112 @@
+; -------------------------------------------
+; /aflood - $aflood by Flobse
+;
+; This snippet is an "Message-Buffer". 
+; You can add, delete and view messages to the queue which will be played by a defined speed in #channels or @windows
+; 
+; -------------------------------------------
+; 
+; Syntax:
+; 
+; /aflood <Name> <Target> <Message> - to add some messages
+; /aflood -d <Name> - to remove some messages (wildcard *) 
+; /aflood stop - stops the queued messages (no delete)
+; /aflood play - plays the queued messages
+; $aflood(Name,N) - returns the Nth message from Name (wildcard *)
+; $aflood(N) - returns the Nth message (0 returns number of contents)
+; 
+; -------------------------------------------
+; 
+; Example:
+; 
+; alias test {
+;   window @test
+;   var %x = 1
+;   while (%x <= 10) {
+;     aflood Channelmsg #yxcasdqwe This message will be shown in #yxcasdqwe the %x $+ th time.
+;     aflood Windowecho @test This message will be shown in @test the %x $+ th time. (not timed)
+;     aflood Statusecho Status Window This message will be shown in the Status Window the %x $+ th time. (not timed)
+;     inc %x
+;   }
+; }
+; 
+; After /test are 30 (3x10) messages in the queue. 
+; If the target is an @window or the Status Window it will be echo directly without any timer.
+; Only the messages to the #channel will be play timed (default 2 secs per line)
+; 
+; Now u could stop the queue-play for example with /aflood -d * or /aflood -d Channelmsg or /aflood -d Channel*
+; 
+; -------------------------------------------
+
+
+alias aflood {
+  if (!$isid) {
+
+    ;/aflood -d
+    if (($1 == -d) && ($hget(aflood,0).item > 1)) {
+      var %x 1 | while ($hget(aflood,%x).item) { hadd -m aflood2 $v1 $hget(aflood,$v1) | inc %x }
+      hfree aflood
+      var %x 1
+      while ($hget(aflood2,%x).item) {
+        if ($2 !iswm $gettok($hget(aflood2,$v1),1,32)) {
+          hinc -m aflood counter
+          hadd -m aflood $hget(aflood,counter) $hget(aflood2,%x).data
+        }
+        inc %x
+      }
+      if ($hget(aflood2)) { hfree $v1 }
+    }
+
+    ;/aflood stop
+    elseif ($1 == stop) { .timeraflood off | return $true }
+
+    ;/aflood play
+    elseif ($1 == play) { aflood.queue | return $true }  
+
+    ;/aflood add message
+    elseif ($3) {
+      if (($left($2,1) == @) || ($2-3 == Status Window)) { echo $iif($2-3 == Status Window,-s $4-,$2 $3-) }
+      elseif ($left($2,1) == $chr(35)) {
+        hinc -m aflood counter
+        hadd -m aflood $hget(aflood,counter) $1-
+
+        ;Change this timer to setup the rowspeed (default 2 secs) (Note: There are 2 timers what u have to change)
+        if (!$timer(aflood)) { .timeraflood 1 2 aflood.queue }
+  } } }
+
+  ;$aflood(N)
+  elseif ($1 isnum) {
+    if ($1 == 0) { return $calc($hget(aflood,0).item -1) }
+    elseif ($hget(aflood,$calc($hget(aflood,0).item - $hget(aflood,counter) +1+ $1))) { return $v1 }
+  }
+
+  ;$aflood(Name,N)
+  elseif ($1) {
+    var %x 1, %i 0
+    while ($hget(aflood,$calc($hget(aflood,0).item - $hget(aflood,counter) +1+ %x))) {
+      if ($1 iswm $gettok($v1,1,32)) {
+        inc %i
+        if ($2 !isnum) { return $true }
+        elseif ((%i == $2) && ($2 != 0)) { return $hget(aflood,$calc($hget(aflood,0).item - $hget(aflood,counter) +1+ %x)) }
+      }
+      inc %x
+    } 
+    if ($2 == 0) { return %i }
+  }
+}
+
+alias -l aflood.queue {
+  if ($hget(aflood,0).item > 1) {
+    var %r = $calc($hget(aflood,counter) - $hget(aflood,0).item +2)
+    if ($me ison $gettok($hget(aflood,%r),2,32)) { msg $v2 $gettok($hget(aflood,%r),3-,32) }
+    hdel aflood %r
+  }
+  if ($hget(aflood)) { aflood.queue2 }
+  if ($hget(aflood,0).item == 1) { hfree aflood }
+}
+
+;Change this timer to setup the rowspeed (default 2 secs) (Note: There are 2 timers what u have to change)
+alias -l aflood.queue2 { .timeraflood 1 2 aflood.queue }
+
+
+;EoF

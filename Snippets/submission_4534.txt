@@ -1,0 +1,100 @@
+; ----------------------------------------------------------------------------------------------------
+; $CreateObject() - COM Interface Dispatch Handling
+; ----------------------------------------------------------------------------------------------------
+; Syntax and Usage:
+;
+; $CreateObject(<progid>,<name>,<n>,...,<n>,...)
+; 
+; PROGID = Programmatic identifier, i.e. WScript.Shell or MSScriptControl.ScriptControl
+; NAME   = Parent object name
+; <N>    = If N is 2 $CreateObject will take the next two tokens as data for a single COM call.
+; ...    = Passed arguments
+; ----------------------------------------------------------------------------------------------------
+
+/*
+alias example {
+
+  var %objname = WBEMObject. $+ $ticks, %i = 1
+
+  var %object = $CreateObject( $&
+    WbemScripting.SWbemLocator,%objname, $&
+    2,ConnectServer,3, $&
+    4,InstancesOf,3,String,Win32_Process $&
+    )
+
+  while ($comval(%object,%i,name)) {
+    echo -a $v1
+    inc %i
+  }
+
+  .comclose %object
+
+}
+*/
+
+; ----------------------------------------------------------------------------------------------------
+
+alias createobject { 
+
+  //REM Unique identifiers for System.Collections.Queue objects.
+
+  var %1 = obj $+ $ticks, %2 = obj2 $+ $ticks, %3 = obj3 $+ $ticks
+
+  //REM Populate the first queue with each argument passed to $CreateObject()
+
+  scon -r noop $!queue( %1 ,enqueue, $* )
+
+  //REM Opening our initial object.
+  //REM Because the Queue objects are FIFO, (first in first out) this is equivalent ...
+  //REM ... to //.comopen $2 $1
+
+  inherits $object($queue(%1).dequeue,$queue(%1).dequeue)
+
+  //REM Separate COM call data into their own respective housing.
+
+  while ($queue(%1).dequeue) {
+    var %i = $v1, %buffer = $null
+    while (%i) { 
+      dec  %i
+      %buffer = %buffer $queue(%1).dequeue $+ $iif(%i,$chr(44),$null)
+    }
+    noop $queue(%2,enqueue,%buffer)
+  }
+
+  //REM Construct each COM call accordingly with the items of the second queue.
+  //REM Each dispatched item may be kept alive by providing the .KeepAlive property ...
+  //REM ... when calling $CreateObject()
+
+  var %parent = $2, %i = 1, %buffer = $null, %method = $iif($prop == keepalive,noop,.comclose)
+  %buffer = %method %parent $!com( %parent , $queue(%2).dequeue , dispatch* $+(%parent,.1) )
+  noop $queue(%3,enqueue,%buffer)
+  while ($queue(%2).dequeue) {
+    %buffer = %method $+(%parent,.,%i) $!com( $+(%parent,.,%i) , $v1 , dispatch* $+(%parent,.,$calc(%i + 1)) )
+    noop $queue(%3,enqueue,%buffer)
+    inc %i
+  }
+
+  //REM Evaluate all of the commands built and stored in the third queue.
+
+  while ($queue(%3).dequeue) [ [ $v1 ] ]
+
+  //REM Cleaning up all of the queues and returning the final object handle created.
+
+  .timer 1 0 .comclose %1 $(|,) .comclose %2 $(|,) .comclose %3
+  return $com($com(0))
+
+}
+
+;; Local aliases for use by $CreateObject
+;; /inherits $object(OBJECT,NAME) works to prevent invalid COM objects from being created and improperly processed.
+;; $queue is a wrapper for System.Collections.Queue functionality.
+
+alias -l inherits if (!$com($1)) halt
+alias -l object { if (!$com($2)) .comopen $2 $1 
+  return $iif($com($2).progid == $1,$2,$null)
+}
+alias -l queue {
+  inherits $object(system.collections.queue,$1)
+  if ($istok(count dequeue,$prop,32)) return $null($com($1,$prop,3)) $com($1).result
+  elseif ($2 == enqueue) noop $com($1,$2,1,string,$3)
+}

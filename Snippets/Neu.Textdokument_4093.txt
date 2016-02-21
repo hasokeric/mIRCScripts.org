@@ -1,0 +1,34 @@
+; --------------------------------------
+; /delete - by Flobse
+; 
+; This is a small snippet to delete a file or a folder.
+; You can also delete a folder which arent empty too.
+; Optional is the parameter -b to put the deleted files(not the folders) into the recylce bin.
+;
+; --------------------------------------
+; Syntax: /delete [-b] name
+;
+; --------------------------------------
+; Example: 
+;
+; /delete D:\Pictures\My Pics
+;
+; /delete -b D:\Pictures\My Pics\blupp.jpg
+;
+; --------------------------------------
+; ## #Flobse @ Quakenet - Scripter@Flobse.de - UIN: 152759920 ##
+
+
+delete {
+  if (!$1) { $iif($show,echo $color(info) -s * /delete: insufficient parameters) | return } 
+  var %del $1-
+  if ($1 == -b) { var %recycle 1, %del $2- }
+  if (!$exists($+(",%del"))) { $iif($show,echo $color(info) -s * /delete: file or folder $+(",%del,") does not exist) | return }
+  if ($file(%del).attr == a) { $iif($show,remove,.remove) $iif(%recycle,-b) $+(",%del,") | return }
+  var %x $findfile(%del,*,0)
+  while (%x >= 1) { $iif($show,remove,.remove) $iif(%recycle,-b) $+(",$findfile(%del,*,%x),") | dec %x }
+  var %x $finddir(%del,*,0)
+  while (%x >= 1) { $iif($show,echo $color(info) -s * rmdir $+(',$finddir(%del,*,%x),')) | !rmdir $+(",$finddir(%del,*,%x),") | dec %x }
+  !rmdir $+(",%del,")
+  if ($show) { echo $color(info) -s * rmdir $+(',%del,') }
+}

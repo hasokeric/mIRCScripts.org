@@ -1,0 +1,102 @@
+;::ChannelPerform 1.0 By Oracel
+
+dialog cperform {
+  Title Channel Perform
+  Size -1 -1 172 120
+  Option dbu
+  Button "Close",1, 137 105 30 10, Ok
+  list 2,5 5 50 100,sort
+  button "<< Add",3, 57 5 30 10
+  edit "",4, 88 5 60 10
+  button "Remove >>",5, 57 17 30 10
+  box "",6, 57 28 110 71
+  check "On join, perform these commands:",7, 59 32 100 10
+  edit "",8, 59 42 106 55, hsbar vsbar multi return
+}
+alias -l _cr1 { return $readini data\cperform\ $+ $1 $2 $3 }
+alias -l _cr { return $readini -n data\cperform\ $+ $1 $2 $3 }
+alias -l _cw { writeini -n data\cperform\ $+ $1 $2 $3 $4 }
+alias cperform { $dialog(cperform,cperform) }
+on *:dialog:cperform:*:*: {
+  if ($devent == sclick) {
+    if ($did == 3) {
+      if ($exists(data\cperform\ $+ $did(4).text) == $true) { did -r cperform 4 | return }
+      var %f = data\cperform\ $+ $did(4).text
+      write -c %f
+      did -a cperform 2 $did(4).text
+      did -r cperform 4
+    }
+    if ($did == 2) {
+      if (%xt.temp.cperform.chan != $null) {
+        var %c = %xt.temp.cperform.chan
+        $_cw(%c,g,s,$did(7).state)
+        var %i = 1, %t = $did(8).lines, %v, %v2
+        while (%i <= %t) {
+          %v = c $+ %i
+          %v2 = $did(8,%i).text
+          if (%v2 != $null) { $_cw(%c,c,%v,%v2) }
+          inc %i
+        }
+      }
+      set %xt.temp.cperform.chan $did(2).seltext
+      var %f = data\cperform\ $+ $did(2).seltext
+      if ($_cr($did(2).seltext,g,s) == 1) { did -c cperform 7 } | else { did -u cperform 7 }
+      var %i = 1,%f2 = $did(2).seltext
+      did -r cperform 8
+      while (%i <= $ini(%f,c,0)) {
+        if ($_cr(%f2,c,$ini(%f,c,%i)) != $null) {
+          did -a cperform 8 $_cr(%f2,c,$ini(%f,c,%i)) $+ $crlf
+        }
+        inc %i
+      }
+    }
+    if ($did == 1) {
+      if (%xt.temp.cperform.chan != $null) {
+        var %c = %xt.temp.cperform.chan
+        $_cw(%c,g,s,$did(7).state)
+        var %i = 1, %t = $did(8).lines, %v, %v2
+        while (%i <= %t) {
+          %v = c $+ %i
+          %v2 = $did(8,%i).text
+          if (%v2 != $null) { $_cw(%c,c,%v,%v2) }
+          inc %i
+        }
+      }
+      unset %xt.temp.cperform.*
+    }
+    if ($did == 5) {
+      var %f = data\cperform\ $+ $did(2).seltext
+      if ($exists(%f) != $true) { return }
+      .remove %f
+      unset %xt.temp.cperform.chan
+      did -d cperform 2 $did(2).sel
+      did -r cperform 8
+      did -u cperform 7
+    }
+  }
+  if ($devent == init) {
+    unset %xt.temp.cperform.*
+    .mkdir data
+    .mkdir data\cperform
+    var %i = 1, %t = $findfile(data\cperform,*,0)
+    while (%i <= %t) {
+      did -a cperform 2 $nopath($findfile(data\cperform,*,%i))
+      inc %i
+    }
+  }
+}
+on *:join:#: {
+  if ($nick == $me) {
+    var %f = data\cperform\ $+ $chan
+    if ($exists(%f) == $true) {
+      if ($_cr($nopath(%f),g,s) != 1) { return }
+      var %i = 1
+      while (%i <= $ini(%f,c,0)) {
+        if ($_cr($nopath(%f),c,$ini(%f,c,%i)) != $null) {
+          $_cr1($nopath(%f),c,$ini(%f,c,%i))
+        }
+        inc %i
+      }
+    }
+  }
+}

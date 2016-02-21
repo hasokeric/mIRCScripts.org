@@ -1,0 +1,88 @@
+;###SNIPPET INFORMATION###
+; Name: /text_outline
+; Author: zonIRC
+; Version: 1
+; mIRC Version: 6.35
+; Contact: zonirc@email.com
+;          #klkite (network: undernet)
+;          zonirc (yahoo messenger)
+; Tested: mIRC 6.35+Windows XP Home
+;
+;
+; Description:
+; Drawing an outline text on picture window.
+;
+; Syntax:
+; /text_outline [-ocf] @win x y [w h] color outline [size font] text
+;
+; [-ocf] : a set of switches where 
+;          - o make the text bold
+;          - c the [w h] have been specified and text would be clipped if it extend beyond the x y [w h] area.
+;          - f the [size font] have been specified
+; @win : a picture window name and it must be created first
+; x : the text left position
+; y : the text top position
+; [w h] : the width(w) and height(h) area of the text. Only needed when -c been specified.
+; color : the text color in rgb values
+; outline : the outline color in rgb values.
+; [size font] : the font size(size) and its name(font) where the fontname must be quoted if its contain a space(e.g: "times new roman"). Only needed when -f been specified. by default script would use the specified window font setting.
+; text : the text that would be drawn into picture window
+; NOTE: you can get rgb value by using $rgb(<red>,<green>,<blue>) such as $rgb(255,0,0) that would return '255' for the red color.
+;
+; Distribution:
+; You are allowed to re-distribute it into any form(such as website, magazine, etc) that you wish.
+; Please leave the snippet information section as it is.
+; You are allowed to edit the code but need to inform the user about that.
+; 
+;Example:
+; /text_outline @test 100 10 255 1 sample text for testing purpose only
+; /text_outline -o @test 100 10 255 1 sample text for testing purpose only
+; /text_outline -of @test 100 10 255 1 32 "times new roman" sample text for testing purpose only
+; /text_outline -ocf @test 100 10 200 20 255 1 32 "times new roman" sample text for testing purpose only
+;
+;###END OF INFORMATION###
+
+alias text_outline {
+  ;/text_outline [-ocf] @win x y [w h] color outline [size font] text
+
+  ;set each paremeter into its own variable
+  var %switch $iif(-* iswm $1,$1), %win $($+($,$numtok(%switch @,32)),2), %x $($+($,$numtok(%switch @ x,32)),2)
+  var %y $($+($,$numtok(%switch @ x y,32)),2), %o $iif(o isincs %switch,o), %f $iif(f isincs %switch,f), %c $iif(c isincs %switch,c)
+  if (%c) var %w $($+($,$numtok(%switch @ x y w,32)),2), %h $($+($,$numtok(%switch @ x y w h,32)),2)
+  var %color $($+($,$numtok(%switch @ x y %w %h c,32)),2), %outline $($+($,$numtok(%switch @ x y %w %h c o,32)),2)
+  var %size $iif(%f,$($+($,$numtok(%switch @ x y %w %h c o s,32)),2),$window(%win).fontsize)
+  var %font $iif("* iswm $iif(%f,$($+($,$numtok(%switch @ x y %w %h c o s f,32),-),2),$qt($window(%win).font)),$gettok($v2,1,34),$gettok($v2,1,32))
+  var %text $($+($,$numtok(%switch @ x y %w %h c o $iif(%f,%size %font) t,32),-),2)
+  var %do drawtext $+(-nr,%o,%c) %win %outline $qt(%font) %size, %echo echo -ftsc info * /text_outline:
+
+  ;error handler
+  if ($window(%win).type != picture) %echo $iif($v1,invalid window type,no such window)
+  elseif ($+(%x,%y) !isnum) %echo invalid left/top position
+  elseif (%c) && ($+(%w,%h) !isnum) %echo invalid width/height
+  elseif ($+(%color,%outline) !isnum) %echo invalid text/outline color
+  elseif (%f) && (%size !isnum) %echo invalid font size
+  elseif (!%text) %echo insufficient parameter
+  else {
+    ;set the left and top position for the outline
+    var %bx $calc(%x - 1), %by $calc(%y - 1), %ax $calc(%x + 1), %ay $calc(%y + 1)
+
+    ;draw the outline first
+    %do %bx %by %w %h %text
+    %do %bx %y %w %h %text
+    %do %bx %ay %w %h %text
+
+    %do %x %by %w %h %text
+    %do %x %y %w %h %text
+    %do %x %ay %w %h %text 
+
+    %do %ax %by %w %h %text
+    %do %ax %y %w %h %text
+    %do %ax %ay %w %h %text
+
+    ;draw the text
+    $puttok(%do,%color,4,32) %x %y %w %h %text
+
+    ;refresh window
+    drawdot %win
+  }
+}

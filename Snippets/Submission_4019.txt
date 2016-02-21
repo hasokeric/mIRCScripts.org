@@ -1,0 +1,72 @@
+; Snippet Info ->>>>>>>>>>>>>>>>>>> 
+; Date: Tuesday, January 15th, 2008
+; Name: $title 
+; Author: Champagne
+; Contact Information: Killers_creed@hotmail.com
+; Purpose: Returns the Active Window Text. (As shown in the taskbar for each respective application.)
+; Purpose (continued): Educative script that shows the implementation of Visual Basic code in mIRC.
+; Usage: //echo -a $title
+; Requirements: Must own a registered copy of Microsoft Excel (version 5 (rel. date: 1993)+ ) with VBA access enabled.
+
+alias title { 
+  !var %a $dispatch(a), %b $dispatch(b)
+  !.comopen %a Excel.Application
+  !.comopen %b Excel.Application
+  !noop $handle(%a,$function(window)).Window
+  !noop $handle(%b,$function(title,$com(%a).result)).Title
+  !.timer 1 0 threads
+  !return $com(%b).result
+  :error
+  !if ($comerr) !echo $color(info) COM Error: $v1
+  !reseterror
+  !return $false
+}
+
+; Every following alias is local as they are imperative only to this script file. (alias title) 
+; The following alias will handle the dispatching required for both COM connections in one clean sweep.
+
+alias -l handle {
+  !noop $com($1 ,Workbooks,3,dispatch* $dispatch(a)) $com($v1,Add,3,dispatch* $dispatch(a))
+  !noop $com($v1,VBProject,3,dispatch* $dispatch(a)) $com($v1,VBComponents,3,dispatch* $dispatch(a))
+  !noop $com($v1,Add,3,Int,1,dispatch* $dispatch(a)) $com($v1,CodeModule,3,dispatch* $dispatch(a))
+  !noop $com($v1,AddFromString,3,Bstr,$2) $com($1,Run,3,Bstr,$prop)
+}
+
+; The following alias will close all open COM connections.
+
+alias -l threads !while ($com(1)) !.comclose $v1
+
+; The following two aliases are required for this script to run correctly. 
+; The dispatch alias is to make dispatching to a new COM connection a breeze.
+; The function alias contains both of the VBA scripts required to return the "Active Window Text."
+; The "Active Window Text" refers to the text that is shown in the taskbar for any application. 
+
+alias -l dispatch !if ($+($1,$com(0))) !return $v1
+alias -l function {
+  !if ($1 != window) { 
+    !if ($1 == title) !goto $v2  
+    !else !goto arguments
+  }
+  !return $&
+    Declare Function GetForegroundWindow Lib "user32" Alias "GetForegroundWindow" () As Long $crlf $&
+    Function Window() $crlf $&
+    Window = GetForegroundWindow $crlf $&
+    End Function
+  :title
+  !return $&
+    Declare Function GetWindowTextLength Lib "user32" $&
+    Alias "GetWindowTextLengthA" (ByVal hwnd As Long) As Long $crlf $&
+    Declare Function GetWindowText Lib "user32" Alias "GetWindowTextA" $&
+    (ByVal hwnd As Long, ByVal lpString As String, ByVal cch As Long) As Long $crlf $&
+    Function Title() As String $crlf $&
+    Dim Length As Long $crlf $&
+    Dim Str As String $crlf $&
+    Length = GetWindowTextLength( $+ $2 $+ ) $crlf $&
+    Str = Space(Length + 1) $crlf $&
+    GetWindowText $2 $+ , Str, Length + 1 $crlf $&
+    Title = Left$(Str, Length) $crlf $&
+    End Function
+  :arguments
+  !echo $color(info) $!Function: Invalid Arguments.
+  !return $false
+}

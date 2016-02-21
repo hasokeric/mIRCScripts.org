@@ -1,0 +1,116 @@
+/*
+Documentation for $_lock(com|decode|dll|run).prop
+==================================================================================
+
+1. Author information.
+2. About this snippet.
+3. Installation.
+4. Syntax.
+5. Credits.
+6. Updates.
+
+~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~
+1. Author information:
+
+Author	: Sparkle / Summer @ Rizon
+Contact	: Email (summer@rizon.net)
+		  IRC (DALnet #mIRC and #HelpDesk / Rizon #mIRC and #help)
+		  mIRCScript.org (http://www.mircscripts.org/pmsg.php?show=form&to=Sparkle)
+
+				~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~
+
+2. About this snippet.
+
+We all know that mIRC comes with the default option of $decode() identifier locked in order to prevent certain IRC worms spreading, so far, it works.
+There are other mIRC options in the lock section in the mIRC options dialog; these options are COM, Decode, DLL and Run. To control these options, you need to open the mIRC options dialog -> Other -> Lock. Could be boring, right? This snippet uses COM objects to manipulate the lock options. Through a simple command line, you can enable, disable or view the current state of mIRC lockable items COM, Decode, DLL and Run.
+
+Important note; you MUST have COM enabled in order to use this snippet.
+
+				~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~
+
+3. Installation.
+
+Simply copy the snippet's code (consists of 2 aliases) into your mIRC remote section like this:
+Method #1:
+ALT + R -> Remote -> File -> New -> (Paste the code) -> File -> Save -> (Then close the mIRC scripts' editor, or just close it hitting OK without doing a file -> save).
+Method #2:
+You simply put the snippet's file i.e: mlock.mrc in your mIRC root directory and type /load –rs mlock.mrc
+
+				~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~
+
+4. Syntax.
+
+The syntax is pretty easy, rather pretty basic.
+It is: $_lock(Com|Decode|Dll|Run).property
+
+Now, let me explain the syntax and give examples.
+Let's say that we will now deal with Decode.
+Our syntax could be one of the following:
+1. //noop $_lock(decode).state
+	This will show the current state of decode whether enabled or disabled (it counts on mIRC's $lock() identifier).
+2. //noop $_lock(decode).e
+	This one will enable Decode, means unlock it. If already enabled, you will be notified
+3. //noop $_lock(decode).enable
+	This one will enable Decode (Same as e), means unlock it. If already enabled, you will be notified
+4. //noop $_lock(decode).d
+	This one will disable Decode, means unlock it. If already disabled, you will be notified
+5. //noop $_lock(decode).disable
+	This one will disable Decode (Same as d), means unlock it. If already disabled, you will be notified
+6. //noop $_lock(decode).o
+	This one will open the mIRC options dialog and choose Decode in the lock options so you decide whether to lock or unlock.
+7. //noop $_lock(decode).option
+	This one will open the mIRC options dialog and choose Decode in the lock options so you decide whether to lock or unlock (Same as o).
+8. //noop $_lock(decode)
+	This one will detect the current state and reverse it. If enabled, it will disable – and vice versa.
+
+There is an additional alias/command.
+	/bringopt (COM, Decode, DLL, Run)
+
+				~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~
+
+5. Credits.
+1. Coolkill @ DALnet	: He helped me with the COM syntax. He is pretty great with COM, Thanks to him for his help.
+2. Kathy			: She tested my code, found minor bugs in my regex and fixed it, suggested using $findtok() and using the %prop variable with $findtok() was her idea. I was using if statements. Thanks a lot :)
+
+				~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~
+6. Updates.
+1. November 3rd 2007, updated it to work with mIRC 6.31 as the new options in the lock tab in the mIRC options dialog requires this snippet an extra tab to work properly.
+
+				~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~^~
+*/
+
+;Main alias
+Alias _lock {
+  if ($lock(com) == $true) { echo $color(info) -at * $!_lock() Error - COM is currently locked through mIRC options and this snippet counts on COM objects. Please, enable COM from the mIRC lock options. | return }
+  if (!$isid) { echo $color(info) -at * $!_lock() Error - This ust be used as an identifier | return }
+  if ($regex($1,/^(com|decode|dll|run)$/i)) { 
+    var %i = $findtok(com|decode|dll|run,$regml(1),1,124)
+    var %echo = echo $color(info) -at * $upper($regml(1)) is currently $iif($lock($regml(1)) == $true,disabled,enabled) $+ . $iif($lock($regml(1)) == $true,Enabling,Disabling) now.
+    var %cmd = .sendkeys $+(%,O{HOME},$str({LEFT}{DOWN},6),{LEFT}{END}{RIGHT}{DOWN},{TAB 10},{DOWN %i $+ }h h{ENTER})
+    if (!$prop) { echo $color(info) -at * $upper($regml(1)) is currently $iif($lock($1),disabled,enabled) $+ . $iif($lock($1),Enabling,Disabling) now. | %cmd }
+    else {
+      var %prop = $findtok(state e enable d disable o option,$prop,1,32)
+      if (!%prop) { echo $color(info) -at * $!_lock() Error - Bad property. Syntax: $!_lock(<category>).e d o /enable disable option | return }
+      if (%prop == 1) echo $color(info) -at * $!_lock - $upper($1) is currently $iif($lock($regml(1)),disabled,enabled)
+      elseif (%prop isnum 2-3) { if (!$lock($regml(1))) { echo $color(info) -at * $!_lock - $upper($regml(1)) is already enabled. } | else { %echo | %cmd } }
+      elseif (%prop isnum 4-5) { if ($lock($regml(1))) { echo $color(info) -at * $!_lock - $upper($regml(1)) is already disabled. } | else { %echo | %cmd } }
+      elseif (%prop isnum 6-7) sendkeys $+(%,O{HOME},$str({LEFT}{DOWN},6),{LEFT}{END}{RIGHT}{DOWN},$str({TAB},11), $+ $str({DOWN},%i) $+ )
+    }
+  }
+  else { echo $color(info) -at * $!_lock() Error - Available options are Com Decode DLL Run | return }
+}
+
+;The additional Senkeys alias
+Alias -l sendkeys { 
+  var %object = sendkeys $+ $ticks 
+  .comopen %object WScript.Shell
+  if ($com(%object)) { .comclose %object $com(%object,SendKeys,3,bstr,$1-) }
+}
+
+;Additional alias 
+Alias bringopt {
+  var %i = $findtok(com|decode|dll|run,$1,1,124)
+  sendkeys $+(%,O{HOME},$str({LEFT}{DOWN},6),{LEFT}{END}{RIGHT}{DOWN},$str({TAB},11), $+ $str({DOWN},%i) $+ )
+}
+;EOF
+; Sparkle @ Saturday, November 3rd, 2007

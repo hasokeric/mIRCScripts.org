@@ -1,0 +1,45 @@
+; $countr
+; by blink (26/7/2007)
+; code simply acts like mIRC's built-in $count but offer ranges match and selecting Nth match to return.
+;
+; ======================================
+;
+; Syntax: $countr(string,N,substring1,substring2,...)
+;
+; - string = your string you want to count in.
+; - N = specifying N will return the Nth match
+;       Note that it's not optional. in case you
+;       want to return the result of every spcified
+;       substrings simply turn it into 0.
+;   substringN = string you want to count in your text
+;
+; ======================================
+;
+; Examples:
+;
+; //echo -a $countr(aaabcc,0,a-b,x) = 4
+; //echo -a $countr(aaabcc,2,a-b,x) = 0
+; //echo -a $countr(aaabcc,2,a-b,c) = 2
+; //echo -a $countr(aaabcc,0,b-) = 3
+; //echo -a $countr(aaabcc,0,-c) = 6
+;
+; ======================================
+;
+; Notes:
+;
+; * Code suppurt numbers in ranges.
+; * 2bytes range or more doesn't work. ex: 10-20 would match (0,1,2)
+;
+
+alias countr {
+  var %a = 3,%b,%c,%d
+  while * iswm $evalnext($ $+ %a) {
+    noop $regsub($v2,^([^\-])\-$,$iif(\1 isnum,\1-9,\1-z),%b)
+    noop $regsub(%b,^\-([^\-])$,$iif(\1 isnum,1-\1,a-\1),%b)
+    %c = %c $+ %b
+    inc %d
+    if (%d = $2) return $regex($1,$+(/[,%b,]/g))
+    inc %a
+  }
+  return $iif(!$2,$regex($1,$+(/[,%c,]/g)))
+}

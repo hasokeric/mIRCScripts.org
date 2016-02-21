@@ -1,0 +1,69 @@
+/*
+; =================================================================
+; Alias: /remdir - Coded by zBrute [15-MAR-2006]
+; Description: Deletes directories but with this alias you are able
+; to delete directories with files, unlike mIRC's /rmdir.
+; =================================================================
+*/
+
+
+alias rmdir {
+
+  ; This removes quation marks if for some reason they were added.
+  Var %Dir, %Temp = $RegSub($1-,/"/g,$Null,%Dir)
+
+  ; This adds the quations marks, and adds the script directory if its a foler inside of the mIRC folder.
+  %Dir = $+(",$IIF(!$regex(%Dir,:),$ScriptDir),%Dir,")
+
+  ; Checks to see if remdir.txt is in the mirc directory and if so, it will delete it.
+  IF ($IsFile(remdir.txt)) .Remove remdir.txt
+
+  ; Checks to make sure the directory exists.
+  IF ($IsDir(%Dir)) {
+
+    ; This prompts you to make sure if you really want to delete the directory.
+    IF ($Input(Are you sure want to delete the directory below? $Str($CRLF,2) %Dir $CRLF,yw,/rmdir)) {
+
+      ; This adds all the files of the directory to remdir.txt
+      IF ($FindFile(%Dir,*.*,0,Write remdir.txt $1-)) {
+
+        ; This filter command users the DEL_FILES alias to delete the files in the given directory.
+        .Filter -k remdir.txt DEL_FILES
+
+        ; This removes the folder.
+        /RmDir %Dir
+
+        ; Deletes the remdir.txt file.
+        .Remove remdir.txt
+
+      }
+
+      ELSE {
+
+        ; This removes the folder.
+        /RmDir %Dir
+
+        ; Deletes the remdir.txt file.
+        .Remove remdir.txt
+
+      }
+
+      ; echos in the status window that the directory was removed successfully.
+      Echo $Color(Info Text) -es * /rmdir: %Dir (The directory was deleted successfully!)
+
+    }
+
+    ; echos in the status window that the directory wasn't deleted.
+    ELSE Echo $Color(Info Text) -es * /rmdir: %Dir (The directory was NOT deleted.)
+
+  }
+
+  ; echos in the status window that the directory given did not exist.
+  ELSE Echo $Color(Info Text) -es * /rmdir: %Dir does not exist
+
+}
+
+; alias used in the filter command for deleting files from the directory.
+alias DEL_FILES {
+  .Remove $+(",$1-,")
+}

@@ -1,0 +1,63 @@
+/*
+This is just a simple alias to remove content from a binvar
+Syntax: /bremove [-lrmt] <&binvar> (<X> [Y]|ascii values)
+Switches:
+l - basically simulates $left(text,X) removing X bytes from the 'left'; also use -X to remove X opposite bytes
+r - again simulates $right(text,X)
+m - simulates $mid(text,X,Y) removing Y bytes starting at position X
+t - Indicates that X is treated as plain text and all occurrences of X are removed from the binvar (case insensitive)
+if no switches are indicated then all occurrences of the ascii string are removed
+NOTE: 
+/bremove -t &x 1 2 3 4 5 6 7 8 9
+this example will remove all occurrences of the string '1 2 3 4 5 6 7 8 9' in the binvar &x, as apose 
+to $remove(text,1,2,3,4,5,6,7,8,9) removing all numbers from the text
+
+if you wanted to remove all digits you would need to repeat the command for every single digit
+//tokenize 32 1 2 3 4 5 6 7 8 9 | bremove -t &x $*
+
+Examples:
+
+//bset -t &x 1 testing | bremove -l &x 3 | echo -a $bvar(&x,1-).text
+echoes 'ting' removing left 3 from the binvar
+
+//bset -t &x 1 testing | bremove -m &x 2 4 | echo -a $bvar(&x,1-).text
+echoes 'tng' removing 4 bytes starting at the 2nd position
+
+//bset -t &x 1 banana | bremove -t &x an | echo -a $bvar(&x,1-).text
+echoes 'ba' removing all occurrences of 'an' in the binvar
+
+//bset -t &x 1 its just a test | bremove &x 32 | echo -a $bvar(&x,1-).text
+echoes 'itsjustatest' removing all occurrences $chr(32) in the binvar
+*/
+alias bremove {
+  var %bvar $iif(-?* iswm $1,$2,$1)
+  if ($isid) || (!$bvar(%bvar,0)) || (($regex($1,/^\-\w+$/i)) && ($0 < 3)) || ((-*m* iswm $1) && ($0 < 4)) {
+    echo -aec i * /bremove: invalid parameters
+    return
+  }
+  :id
+  var %bremove & $+ $r(0,$str(9,12))
+  if ($bvar(%bremove,0)) goto id
+  bcopy %bremove 1 %bvar 1 $bvar(%bvar,0)
+  bunset %bvar
+  if (-*r* iswm $1) {
+    if ($3 < 0) bcopy %bvar 1 %bremove $calc($abs($3) + 1) $bvar(%bremove,0)
+    else bcopy %bvar 1 %bremove 1 $calc($bvar(%bremove,0) - $3)
+  }
+  elseif (-*l* iswm $1) {
+    if ($3 < 0) bcopy %bvar 1 %bremove 1 $calc($bvar(%bremove,0) $3)
+    else bcopy %bvar 1 %bremove $calc($3 + 1) $bvar(%bremove,0)
+  }
+  elseif (-*m* iswm $1) { 
+    bcopy %bvar 1 %bremove 1 $calc($3 - 1)
+    if ($calc($3 + $4) <= $bvar(%bremove,0)) bcopy %bvar $3 %bremove $v1 $v2
+  }
+  else {
+    var %x 1, %text $iif(-*t* iswm $1,$3-,$regsubex($2-,/(\d+ ?)/g,$chr(\1)))
+    while ($bfind(%bremove,%x,%text).text) {
+      bcopy %bvar $calc($bvar(%bvar,0) + 1) %bremove %x $calc($v1 - %x)
+      %x = $v1 + $len(%text)
+    }
+    if (%x <= $bvar(%bremove,0)) bcopy %bvar $calc($bvar(%bvar,0) + 1) %bremove %x $v2
+  }
+}

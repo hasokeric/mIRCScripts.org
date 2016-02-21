@@ -1,0 +1,92 @@
+; Raw finder by Lindrian
+; irc.deltaanime.net @ #Lindrian
+; Firas.dib@gmail.com
+
+; Usage:
+; Simply type /raw.find <numeric|name>
+; You may also use this as an "id", even though it will NOT return info.
+; It will only halt the output error.
+; Example:
+; /raw.find who
+; /raw.find 366
+; //echo -a $raw.find(366)
+; //echo -a $raw.find(who)
+; The "id" will echo the information, just like /raw.find will.
+; I only added that option for the people who like to use $raw.find
+; instead of /raw.find
+
+; Example output would be:
+
+; Looking up raw 366... Please hold.
+
+; [366]
+
+; Format: <channel> :End of /NAMES list.
+; Info: This is returned at the end of a NAMES list, after all visible names are returned.
+; Example: #help.script :End of /NAMES list.
+; Numeric: 366
+; Link: http://script.quakenet.org/index.php?p=raws&a=366
+
+; [/366]
+
+; Thanks to quakenet for their raw page
+; Enjoy
+
+alias raw.find {
+  if ($1) {
+    unset %raw.*
+    if ($sock(raw)) .sockclose raw
+    .sockopen raw script.quakenet.org 80
+    var %j = $iif($1 isnum,$right($+(00,$1),3),$1)
+    echo -a 
+    echo -a Looking up raw %j $+ ... Please hold.
+    echo -a 
+    .sockmark raw %j
+    if ($isid) halt
+  }
+  else {
+    echo -a Syntax: /raw.find <numeric|name>
+  }
+}
+on *:sockopen:raw: {
+  if ($sockerr) {
+    echo -a Failed connecting to the server: $sock($sockname).wsmsg
+    .sockclose $sockname
+  }
+  else {
+    .sockwrite -n $sockname GET $+(/index.php?p=raws&,$iif($sock($sockname).mark isnum,a,b),=,$sock($sockname).mark) HTTP/1.1
+    .sockwrite -n $sockname HOST: script.quakenet.org
+    .sockwrite -n $sockname $crlf 
+  }
+}
+on *:sockread:raw: {
+  var %g 
+  sockread %g
+  if ($regex(%g,/<tr><td class="RawsHeader1">(.*?)</td><td class="RawsHeader2">(.*?)</td></tr>/)) {
+    %raw.z = $regml(1)
+  }
+  if ($regex(%g,/<tr><td class="RawsBody1">(.*?)</td><td colspan=".*?" class="RawsBody2">(.*?)</td></tr>/)) {
+    if (!%raw.x) {
+      echo -a $+(,[,$sock($sockname).mark,],)
+      echo -a 
+      %raw.x = 1
+    }
+    echo -a $+(,$regml(1),) $remove($replace($regml(2),&gt,>,&lt,<),;)
+    %raw.y = $calc(%raw.y + 1)
+    if (%raw.y == 3) {
+      if (%raw.z) echo -a Numeric: $iif($v1 isnum,$v1,$v1 (Not numeric))
+      echo -a Link: http://script.quakenet.org/index.php?p=raws& $+ $iif($sock($sockname).mark isnum,a= $+ $v1,b= $+ $v1)
+      echo -a 
+      %raw.y = 0
+    }
+  }
+}
+on *:sockclose:raw: {
+  if (!%raw.x) {
+    echo -a There was no result for raw $sock($sockname).mark $+ ...
+    unset %raw.*
+  }
+  else echo -a $+(,[,/,$sock($sockname).mark,],)
+}
+
+; End of file

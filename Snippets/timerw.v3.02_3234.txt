@@ -1,0 +1,78 @@
+; usage: $timerw(matchtext,N)
+;
+; N can be 0 and higher, if N is 0 then properties can't be used else it will return $null
+; Original properties from $timer can be used.
+; Additional properties: num
+;
+; examples: /timerq1 1 888 echo -s Hi. | /timerq2 1 999 echo -s Bye.
+;
+; $timerw(q*,0) returns 2
+; $timerw(q1,0) returns 1
+; $timerw(q*,1) returns q1
+; $timerw(q*,1).secs returns 888
+; $timerw(*,0) retuns the number of active timers [same as $timerw(0) or $timer(0)]
+; $timerw(*,0).secs retuns $null
+; $timerw(q1).secs returns 888
+; $timerw(q1) returns q1
+; $timerw(1) returns the timer id of the 1st timer in the list
+;
+; num property:
+; The num proterty means the wildcard MUST match a number (0 or higher).
+; The wildcard must be on the right side. For example "word*".
+; /timerpq1 1 100 echo -s Hi. | /timerpqe1 1 200 echo -s Bye.
+;
+; $timerw(pq*,0).num returns 1
+; $timerw(pqe*,0).num returns 1
+; $timerw(pqe*,1).num returns pqe1
+;
+; $timerw(go*,0).num returns 0
+; $timerw(go*,1).num returns $null
+;
+; $timerw(g*o*,0).num returns $null
+; $timerw(g*o*,1).num returns $null
+;
+; $timerw(*,0).num returns total timers named with numbers only (0 or higher)
+; $timerw(*,1).num returns first timer named with numbers only (0 or higher)
+;
+; hn (high number) property:
+; The high number property works the same way the "num" property does plus
+; it returns the highest timer number of all matching timers.
+;
+; $timerw(pq*).hn retuns 1
+;
+; hv (high value) property:
+; The high value property works the same way the "num" property does plus
+; it returns the highest timer delay of all matching timers.
+;
+; $timerw(pq*).hv returns 100
+
+
+alias timerw {
+  if ($isid) && ($1 != $null) {
+    var %a = 1, %w = 0, %num = 0,  %hn = 0, %hv = 0, %rex = $regex($1,(\?|\*)), %props = num hn hv
+    while ($timer(%a)) {
+      var %tnum = $regsubex($timer(%a),/((?<!^\Q $+ $left($1,-1) $+ \E).)+/i,$null)
+      if ($1 iswm $timer(%a)) && (%rex) {
+        inc %w
+        if ($prop == num) && (%tnum isnum 0-) {
+          inc %num | if ($2 == %num) { return $timer(%a) }
+        }
+        if ($prop == hn) && (%tnum isnum 0-) && (%tnum > %hn) { var %hn = %tnum }
+        if ($prop == hv) && (%tnum isnum 0-) && ($timer(%a).secs > %hv) { var %hv = $v1 }
+        elseif (!$istok(%props,$prop,32)) && ($2 == %w) {
+          return $iif($prop,$timer(%a). [ $+ [ $prop ] ],$timer(%a))
+        }
+      }
+      inc %a
+    }
+    if (%rex) {
+      if ($2 == 0) && ($prop == num) { return %num }
+      elseif ($istok(hn hv ,$prop,32)) { return $($+(%,$prop),2) }
+      elseif ($2 == 0) && (!$prop) { return %w }
+    }
+  }
+  elseif ($isid) {
+    if ($1 == $null) { return 3.02 }
+    elseif (!$2) { return $iif($prop,$timer($1). [ $+ [ $prop ] ],$timer($1)) }
+  }
+}

@@ -1,0 +1,59 @@
+; -------------------------------------------
+; LAST.FM-Snippet by ChosenOne
+; Contact:
+;   Email: ChosenOne@cyberscripters.org 
+;         (right, the old email address is not valid anymore)
+;   IRC: Chosen0ne@Quakenet
+; -------------------------------------------
+; Usage: /lastfm
+;       If no parameters are given, you will be asked to set your username.
+;       once this is done you are allowed to use the following features:
+;       (no parameter) = lists your recent tracks (up to 10)
+;	 -s = set Username (required!). Example: lastfm -s User
+;       -t = lists your top 50 tracks
+;       
+; Note:
+;      Once again this snippet takes care of the bascics only.
+;	you might have to change the signal events.
+;
+; -------------------------------------------
+; Idea by PureSpider@Quakenet
+; -------------------------------------------
+alias lastfm {
+  if ($1 == -s) { echo -ag Username set to $2 | hadd -m lastfm user $2 | return }
+  if (!$hget(lastfm,user)) { echo -ag No Username set. Try /lastfm -s <Username> | return }
+  if ($1 == -t) { set -u5 %lastfm.url /toptracks.txt  }
+  else { set -u5 %lastfm.url /recenttracks.txt }
+  sockopen $+(lastfm.,$r(0,42)) ws.audioscrobbler.com 80
+}
+on *:sockopen:lastfm.*:{
+  if ($sockerr) || (!$sock($sockname)) return
+  sockwrite -n $sockname GET /1.0/user/ $+ $hget(lastfm,user) $+ %lastfm.url HTTP/1.1
+  sockwrite -n $sockname Host: ws.audioscrobbler.com
+  sockwrite -n $sockname $crlf
+}
+on *:sockread:lastfm.*:{
+  var %lastfm.read | sockread %lastfm.read | tokenize 32 %lastfm.read
+  if (!$1) return
+  ; For debugging purposes:
+  ;echo -s $1-
+  if ($chr(44) isin $1-) && (%lastfm.go) {
+    var %time = $gettok($1-,1,44)
+    var %track = $gettok($1-,2,44)
+    .signal -n lastfm %time %track
+  }
+  if (*ont*yp* iswm $1-) { 
+    set -u3 %lastfm.go 1 
+    ;### You might want to edit here ###
+    echo -sg Listing %lastfm.url
+  }
+}
+on *:signal:lastfm:{
+  ;sick utf8 shit:
+  var %track = $replace($2-,–,-)
+
+  ;### ...and especially here ###
+  if (%lastfm.url == /recenttracks.txt) { var %time = $asctime($1) | echo -s %time > %track }
+  else { echo -s %time > %track }
+
+}

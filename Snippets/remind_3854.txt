@@ -1,0 +1,78 @@
+/*
+Remind v1.3 reminds a certain thing and pops up a note for it every x seconds, y times
+You cant have -c or -r as ur heading / name.
+Syntax: /remind [-c|r] <Heading/Name> <Delay> <Repetions> <Message>
+
+Example of adding:
+/remind Dinner 600 10 Buy tomato sauce for dinner.
+This will make a popup every 600 seconds (10 mins, I think), 10 times reminding you to buy tomato sauce for dinner.
+
+Example of adding:
+/remind -r Dinner
+Thiw will remove and stop the popups of the dinner reminder.
+
+Example of clearing:
+/remind -c
+This will clear all active reminders.
+
+All Rights Reserved.
+Made by miceiken.
+*/
+
+
+alias remind {
+  if (- !iswm $1) {
+    if ($4) {
+      var %n = $1, %d = $2, %t = $3, %m = $4-
+      if (%d isnum) && (%t isnum) {
+        if (!$timer($+(r.,%n))) {
+          .timer $+ r. $+ %n %t %d remdo %n %t $time $4-
+          tipit Reminding... Added to reminding notes.
+
+        }
+        else {
+          tipit Reminder:Error A reminder note already exists with that name.
+        }
+      }
+      else {
+        tipit Reminder:Error You have a syntax error: /remind [-c|r] <Heading/Name> <Delay> <Repetions> <Message>
+      }
+    }
+    elseif ($1 == -c) {
+      unset %r.
+      var %x = $timer(0)
+      while (%x) {
+        if ($left($timer(%x),2) == r.) {
+          .timer $+ $timer(%x) off
+        }
+        dec %x
+      }
+      tipit Reminder:Cleared Cleared all reminders.
+    }
+    elseif ($1 == -r) {
+      if ($timer($+(r.,$2))) {
+        unset %r. $+ $2
+        .timer $+ r. $+ $2 off
+        tipit Reminder:Removed The reminder with name $2 $+ . was deactivated.
+      }
+      else {
+        tipit Reminder:Error There is no reminder with the name $2 $+ !
+      }
+    }
+    else {
+      tipit Reminder:Error You have a syntax error: /remind [-c|r] <Heading/Name> <Delay> <Repetions> <Message>
+    }
+  }
+}
+alias -l tipit {
+  noop $tip($r(10000,20000),$1,$2-,$null,$null,$null,$null,$null)
+}
+alias -l remdo {
+  inc %r. $+ $1
+  beep 20 20
+  tipit $1 Reminder note: $+($crlf,$4-) 
+  if (%r. [ $+ [ $1 ] ] == $2) {
+    .timer $+ r. $+ $1 off
+    unset %r. $+ $1
+  }
+}

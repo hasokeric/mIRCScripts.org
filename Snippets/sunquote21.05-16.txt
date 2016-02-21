@@ -1,0 +1,246 @@
+;::::::::::::::::::::::::::::::::::::::::
+;                                      ::
+;   sunquotes v2.1                      :
+;   - quote addon for mIRC              .
+;                                       .
+;     written by ophoria                :
+;     sunquote@midwinter.8m.com        ::   
+;                                      ::
+;    check the hompage for the newest  ::
+;    version.                          ::::::::
+;                                            ::
+;    http://sunbeam.sytes.net/io/sunquotes/  ::
+;                                            ::
+;                                            ::
+;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::.
+;                                                               ::
+; Follow these simple steps to install this add-on              ::
+; ------------------------------------------------              ::
+;                                                               ::
+; 1) Place this file inside the mIRC-folder  (i.e. c:\mirc)     ::
+;                                                               ::
+; 2) In the STATUS window, write    /remote ON                  ::
+;                                                               ::
+; 3) In the STATUS window, write    /load -rs sunquote21.txt    ::
+;    a popup will appear, click YES.                            ::
+;                                                               ::
+; 4) New menus are now already created. Check 'em out.          ::
+;    One that will appear in #channels and one that will show   ::
+;    up only in the main menubar, inside 'Commands'             ::
+;                                                               ::
+;    >> NOTICE the Shortcuts >>                                 ::
+;                                                               ::
+; - F1 Saves the _latest_ line in the current channel or msgbox ::
+; - F4 Display a random quote in current channel/msgbox         ::
+; - F5 Saves the line(s) you've selected with the mouse         ::
+;                                                               ::
+;    >> Remote Commands >>                                      ::
+;                                                               ::
+;   !sunq  / !sunqn / !sunqGet                                            ::
+;                                                               ::
+; - Typing !sunq in a #channel makes everyone in that channel   ::
+;   that is running SunQuote send you a random quote from       ::
+;   their own private quotelist. If nobody has SunQuote in      ::
+;   that channel, you won't recieve a quote.                    ::
+;                                                               ::
+; - Typing !sunqn in a #channel makes everyone in that channel  ::
+;   that is running SunQuote send you information about how     ::
+;   many quotes that person has in his own private quotelist.   ::
+;                                                               ::
+; - Whoever that types !sunqGet in a #channel will get the      ::
+;   this script from you.                                       ::
+;                                                               ::
+;:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;                                                               ::
+; What SunQuote does:                                           ::
+; -------------------                                           ::
+;                                                               ::
+; I wrote SunQuote 'cause I always wanted to remember all the   ::
+; funny (or wise) stuff my friends said on irc. Instead of      ::
+; reading logs and writing everything down on usual paper, or in :
+; a Word-file, I wanted to be able to handle this easily within ::
+; mIRC. SunQuotes does this, and in my oppinion, does it good.  ::
+;                                                               ::
+; You can quote anybody/any text in either a channel or private ::
+; session with a single button and you can randomly select      ::
+; and display one of your quotes with another button            ::
+; If you don't like using buttons, there is a simple and easy   ::
+; menu that allows you to do the same (right mousebutton) & more :
+;                                                               ::
+; ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+;                                                               ::
+; Script has been tested on the following                       ::
+; versions of mIRC, but should work on all                      ::
+; newer ones aswell.                                            ::
+;                                                               ::
+; mIRC 6.01                                                     ::
+;      5.91                                                     ::
+;                                                               ::
+; Variables created: all that start with %sq.                   ::
+; Files Created: The quote-file "sunquotes.txt" in the mirc     ::
+; folder.                                                       ::
+;                                                               ::
+; Mail me on sunquotes@midwinter.8m.com if you use this script  ::
+; need help with it, or have any questions or ideas.            ::
+; The script is free to use, but isn't allowed to be modified   ::
+; in any way.                                                   ::
+;                                                               ::
+;                                                  /ophoria     ::
+;                                                               ::
+;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: .
+
+
+
+
+
+
+
+
+
+
+
+
+
+on *:START://echo -s 15 sunquotes loaded...
+on *:TEXT:!sunq:#: /notice $nick %sq.colours (sunquote)  $read sunquotes.txt
+on *:TEXT:!sunqn:#: /notice $nick %sq.colours ---(total number of quotes I have in my sunquote-list) $lines(sunquotes.txt)
+on *:text:!sunqGet:#: /dcc send $nick sunquote21.txt | /notice $nick 0,7 Sending you SunQuotes... Please accept the file...
+
+
+; dialog börjar
+on 1:dialog:sqextrainfo:init:*:{ didtok sqextrainfo 9 44 window & date & time,window & date,date & time,date,time,window,< disable extra info > }
+
+dialog sqextrainfo {
+  title "sunquotes extra info."
+  size -1 -1 142 45
+  option dbu
+  text "Select additional info that you want to add to every saved quote or just select 'disabled' to skip using this feature.", 7, 2 2 136 22
+  button "save setup", 8, 104 31 37 12, ok
+  combo 9, 3 23 90 62, size vsbar drop
+}
+
+on 1:dialog:sqextrainfo:sclick:*:{
+  if ($did == 9) { set %sq.einfo $did(sqextrainfo,9) }
+}
+
+dialog sqabout {
+  title "the speach"
+  size -1 -1 183 141
+  option dbu
+  text "finally.. a thanks go out to Xtrecate from mircscripts.org for having a good point", 2, 5 100 170 23
+  text "written by ophoria", 3, 6 18 47 8
+  box "sunquotes v2.1", 4, 0 2 182 120
+  text "you must mail me if you are using this script and just drop a line saying 'I use it' so that I know how many you are =)  please also mail critics, ideas and whatever helps making this add-on better - I'll reply you all.", 5, 5 42 169 22
+  text "sunquotes@midwinter.8m.com", 6, 6 26 91 8
+  text "this script is free to use and spread as long as no profit is made. you aren't allowed to use it in your own script or modify it without mailing me and recieving my permission. do so, and we'll work something out.", 7, 5 68 169 28
+  button "ok..", 8, 147 127 34 12, ok
+}
+
+; on dialog slut
+;-------------------
+; dialog slut
+
+
+menu menubar {
+  sunquotes
+  .save marked: /f5  
+  .instantsave: /f1
+  .-
+  .show random quote: /f4
+  .-
+  .setup
+  ..extra info: /dialog -m sqextrainfo sqextrainfo
+  ..display colours: set %sq.colours $?="Press CTRL + K and type the colors directly after. Example: $chr(4) 0,7    (write it as a whole string, no space between the |-sign and the numbers, and have the numbers seperated by a coma)  That would give white text in orange. Leave blank if you don't want to use colours when displaying your quotes."
+  ..edit quotes: /run sunquotes.txt
+  ..count them: //echo -a 15---(total number of quotes)14 $lines(sunquotes.txt)
+  ..del the latest: /delquote
+  .-
+  .homepage:/run http://sunbeam.sytes.net/io/sunquotes/
+  .about:/dialog -m sqabout sqabout
+}
+
+
+menu query,status,channel {
+  sunquotes
+  .save marked: /f5  
+  .instantsave: /f1
+  .-
+  .show random quote: /f4
+}
+
+
+alias f1 {
+  if ( %sq.einfo == window & date & time ) { set %sq.cinfo $active $date $time :: }
+  if ( %sq.einfo == window & date ) { set %sq.cinfo $active $date :: }
+  if ( %sq.einfo == window ) { set %sq.cinfo $active :: }
+  if ( %sq.einfo == date & time ) { set %sq.cinfo $date $time :: }
+  if ( %sq.einfo == date ) { set %sq.cinfo $date :: }
+  if ( %sq.einfo == time ) { set %sq.cinfo $time :: }
+  if ( %sq.einfo == < disable extra info > ) { unset %sq.cinfo }
+  /write -il 1 sunquotes.txt %sq.cinfo $line($active,$line($active,0)) | echo -a 15 (sq)saved > > 14 %sq.cinfo $line($active,$line($active,0))
+
+}
+
+alias eq {
+  run sunquotes.txt
+}
+
+
+alias f4 {
+  /say %sq.colours (sunquotes) $read sunquotes.txt
+}
+alias delquote {
+  //echo -a 15---(deleted latest quote) > >0,14 $read(sunquotes.txt,n,1) | /write -dl 1 sunquotes.txt
+}
+
+
+alias ed { /write -c sunquotes.txt }
+
+alias F5 {
+
+  set %sq.lines $cb(0)
+  if (( %sq.lines == $null ) || ( %sq.lines == 0 )) goto fel
+
+  if ( %sq.einfo == window & date & time ) { set %sq.cinfo $active $date $time :: }
+  if ( %sq.einfo == window & date ) { set %sq.cinfo $active $date :: }
+  if ( %sq.einfo == window ) { set %sq.cinfo $active :: }
+  if ( %sq.einfo == date & time ) { set %sq.cinfo $date $time :: }
+  if ( %sq.einfo == date ) { set %sq.cinfo $date :: }
+  if ( %sq.einfo == time ) { set %sq.cinfo $time :: }
+  if ( %sq.einfo == < disable extra info > ) { unset %sq.cinfo }
+
+  if ( %sq.lines == 1 ) goto enlinje
+  if ( %sq.lines > 1 ) goto flerlinjer
+
+  :flerlinjer
+
+  var %i = 1
+  while (%i <= %sq.lines ) {
+
+    if (%i = 1) { /write -il 1 sunquotes.txt %sq.cinfo $cb(%i) | echo -a 15 (sq)saved %sq.lines lines > >  14 $cb(%i) }
+    else { /write -al 1 sunquotes.txt ________ $cb(%i) | echo -a 15   > >   14 $cb(%i) }
+    inc %i 
+  }
+  halt
+
+  :enlinje
+  /write -il 1 sunquotes.txt %sq.cinfo $cb(1) | echo -a 15 (sq)saved > > 14 $cb(1)
+  halt
+
+  :fel
+  echo -s 15 SunQutes :: 14Couldn't save quote. Please use the mouse to select the text that you want to save, then save it by pressing F5 or using 'save marked' in the menu.
+
+} ;rör ej HELIG bracket på f5 aliaset
+
+
+alias sq {
+
+  set %sq.srch $1-
+
+  if ( $numtok(%sq.srch,32) == 0 ) { echo -a 15 (sq) 14 Please enter a search word or phrase. Example: /sq hi there If there is a quote that conatins the phrase "hi there" in your quotelist then (sq) will display the newest one. The search syntax is not case sensetive and it's a wildcard search. | halt }
+  else { set %sq.tmp99 $read(sunquotes.txt, nw, * $+ %sq.srch $+ *) }
+
+  if ( $readn == 0 ) { echo -a 15 (sq)14 No match for the search 15" %sq.srch " }
+  else { /say %sq.colours (selected quote) $read(sunquotes.txt, nw, * $+ %sq.srch $+ *) }
+
+}

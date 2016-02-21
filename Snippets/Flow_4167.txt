@@ -1,0 +1,37 @@
+;Flow 1.03
+;Made by BlueThen on July 5, 2008.
+;To install, paste this snippet into your remotes (alt + r)
+;and type /flow or right click the channel or status and click Flow to start.
+alias flow { window -paoCzdk0 +tnbL @Flow -1 -1 400 400 | window -paohCzdk0 +tnbL @flow.buf -1 -1 800 800 | flow.init }
+alias -l flow.init {
+  set %flo.a 1 | set %flo.time 0 | set %flo.fps 0 | set %flo.c n
+  set %flo.fcounter 0 | set %flo.fticks $ticks | .timerflo -h 0 100 inc %flo.time | flow.frame
+}
+alias -l flow.frame {
+  if (%flo.c != y) {
+    inc %flo.fcounter | set %flo.ltime $calc($ticks - %flo.oticks)
+    if ($calc($ticks - %flo.fticks) > 999) { set %flo.fps %flo.fcounter | set %flo.fcounter 0 | set %flo.fticks $ticks }
+    clear @flow.buf | drawfill @flow.buf 1 1 1 1 | %flo.y = 0
+    while (%flo.y < 10) {
+      set %flo.x 0
+      while (%flo.x < 20) {
+        %flo.i = $calc(((%flo.y * 20) + 500) + (10 * $sin($calc(%flo.a + (%flo.x * 10) + (%flo.y * 20))).deg))
+        %flo.t = $calc(((%flo.x * 30) + 100) + (10 * $cos($calc(%flo.a + (%flo.x * 10) + (%flo.y * 20))).deg))
+        %flo.s = $calc(255 - ($iif(- isin $calc(%flo.i - ((%flo.y * 20) + 500)), $calc(10- $abs($v2)), $calc($v2 + 10)) *10))
+        drawdot -r @flow.buf $rgb(0,0,%flo.s) $calc(20 + (3 * %flo.y)) %flo.t %flo.i
+        inc %flo.x
+      }
+      inc %flo.y
+    }
+    inc %flo.a $calc(20/10 * %flo.ltime) | drawtext @flow.buf 0 Tahoma 20 15 20 FPS: %flo.fps
+    drawtext @flow.buf 12 Tahoma 30 520 20 Made by BlueThen
+    drawtext @flow.buf 12 Tahoma 30 520 60 BlueThen.com
+    drawcopy -m @flow.buf 0 0 800 800 @flow 0 0 400 400
+    set %flo.oticks $ticks | .timer -o 1 0 flow.frame
+  }
+  else unset %flo.c
+}
+on *:close:@flow: { window -c @flow.buf | .timerflo off | unset %flo.* | set %flo.c y }
+menu channel,status { 
+  Flow: flow
+}

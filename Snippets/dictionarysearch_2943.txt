@@ -1,0 +1,156 @@
+;removes all of the HTML tags from the received webpage
+alias -l htmlfree {
+  var %x, %i = $regsub($1-,/(^[^<]*>|<[^>]*>|<[^>]*$)/g,$null,%x), %x = $remove(%x,&nbsp;)
+  return %x
+}
+
+;Princeton on-line dictionary checker
+;Written by Dan 'xtrapolate' Snider
+;dsnider@eosinc.com
+
+alias -l dict_init { did -o $1 2 1 %define.room | did -o $1 4 1 %define.trigger | did -o $1 6 1 $calc(%define.totresults - 1) }
+alias -l dict_save { set %define.room $did($1,2) | set %define.trigger $did($1,4) | set %define.trigger2 $+(*,%define.trigger,*) | set %define.totresults $calc($did($1,6) + 1) }
+
+on *:load:{ dialog -m dictsearch dictsearch }
+dialog dictsearch {
+  title "Channel Dictionary Search Options"
+  size -1 -1 300 102
+  option pixels
+  text "Target Channel (Use * for all channels):", 1, 4 4 192 16
+  edit "", 2, 198 2 100 21
+  text "Search Trigger (e.g. !define .dict):", 3, 4 27 167 16
+  edit "", 4, 198 25 100 21
+  text "Number of results to return (2 is nice):", 5, 4 50 185 16
+  edit "", 6, 198 48 100 21
+  button "Save", 7, 112 73 75 25, ok
+}
+on *:dialog:dictsearch:*:*:{
+  if ($devent == init) { dict_init $dname }
+  if ($devent == sclick) { if ($did == 7) { dict_save $dname | dict_init $dname } }
+}
+menu channel {
+  .Channel Dictionary:dialog -m dictsearch dictsearch
+}
+
+;allows user to define their own strings, since on TEXT
+;  won't catch it
+on *:INPUT:%define.room:{
+  if ($1 == %define.trigger) {
+
+    ;only runs commands if the user actually used
+    ;  a word to define so ie: !define nothing won't happen
+    if ($2 != $null) {
+
+      ;closes socket if the socket is still open
+      if ($sock(define) != $null) { sockclose define }
+
+      ;unsets the variable used to prevent !define from
+      ;  returning too many results
+      unset %define.noresult
+
+      ;makes connection to princeton's webserver
+      sockopen define wordnetweb.princeton.edu 80
+
+      ;$replace removes all spaces from the search string
+      ;  and replaces it with %20 so the webserver can 
+      ;  understand it.
+      set %define.search $replace($2-,$chr(32),$+($chr(37),20))
+
+      ;saves the channel that the request came from
+      ;  so that the script sends the definitions
+      ;  to only the appropriate channel
+      set %define.chanmsg $active
+    }
+  }
+}
+
+;catches usage of !define string from users in any room
+;  you are in.  will not capture own text.
+on *:text:%define.trigger2:%define.room:{
+
+  ;only runs commands if the user actually used
+  ;  a word to define so ie: !define nothing won't happen
+  if ($2 != $null) {
+
+    ;closes socket if the socket is still open
+    if ($sock(define) != $null) { sockclose define }
+
+    ;unsets the variable used to prevent !define from
+    ;  returning too many results
+    unset %define.noresult
+
+    ;makes connection to princeton's webserver
+    sockopen define wordnetweb.princeton.edu 80
+
+    ;$replace removes all spaces from the search string
+    ;  and replaces it with %20 so the webserver can 
+    ;  understand it.
+    set %define.search $replace($2-,$chr(32),$+($chr(37),20))
+
+    ;saves the channel that the request came from
+    ;  so that the script sends the definitions
+    ;  to only the appropriate channel
+    set %define.chanmsg $chan
+  }
+}
+
+;defines what do to when socket "define" is opened successfully
+on *:sockopen:define:{
+
+  ;sends request to webserver for the definitions
+  sockwrite -nt $sockname GET /perl/webwn?s= $+ %define.search HTTP/1.1
+  sockwrite -nt $sockname Accept-Language: en-us
+  sockwrite -nt $sockname User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; rv:1.7.3) Gecko/20040913 Firefox/0.10.1
+  sockwrite -nt $sockname Referer: http://wordnetweb.princeton.edu
+  sockwrite -nt $sockname Host: wordnetweb.princeton.edu
+  sockwrite -nt $sockname Connection: keep-alive
+  sockwrite -t $sockname $str($crlf,2)
+}
+
+;triggered by data waiting to be read, handles data
+on *:sockread:define:{
+  ;returns to normal if an error occurs
+  if ($sockerr > 0) { echo -a socket error! | return }
+
+  ;defines loop point
+  :nextread
+
+  ;moves data from socket to %temp to be handled later
+  sockread %temp
+
+  ;returns if no data is to be read
+  if ($sockbr == 0) {
+    return
+  }
+  ;if data read was empty, gives a - in %temp
+  if (%temp == $null) { %temp = - }
+
+  ;this statement is pretty proprietary to this particular
+  ;  website so i'm not going to explain it piece by piece
+  ;  but it removes the excess junk from the received lines
+  ;  so that only the needed information (the definitions)
+  ;  are passed back to the channel
+  var %x = did not return any
+  if (%x isin $htmlfree(%temp)) { msg %define.chanmsg [Define:] No results found | halt }
+  if (S: isin $htmlfree(%temp)) {
+    if (Display Option isin $remove($htmlfree(%temp),S:,)) { goto nextread }
+    if (Key: isincs $remove($htmlfree(%temp),S:,)) { goto nextread }
+
+    ;sets %define.noresult to one if it's not already set
+    ;  this is used to make sure the channel isn't
+    ;  flooded with results
+    if (%define.noresult == $null) { set %define.noresult 1 }
+    if (%define.noresult < %define.totresults) {
+
+      ;sends final message to channel
+      msg %define.chanmsg [Define:] $remove($htmlfree(%temp),S:,)
+
+      ;increases %define.noresult once to count how many results
+      ;  have been passed
+      inc %define.noresult 1
+    }
+  }
+
+  ;continues loop to read all the rest of the data
+  goto nextread
+}

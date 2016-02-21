@@ -1,0 +1,386 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; alternative send - by Yannick 'npx' Baron (2007) ;;
+;; #cyberscripters @ quakenet                       ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ----- /asend Command
+alias asend {
+  if ($0 == 0) { asend_send -echo $asend_port }
+  else {
+    if ($1 isnum) { asend_send -echo $asend_port($1) }
+    elseif ($left($1,1) == -) {
+      if ($1 == -stat) { asend_stat }
+      elseif ($1 == -help) { asend_help }
+      elseif ($1 == -copy) { asend_send -copy $asend_port($2) }
+      elseif ($1 == -plist) { if (%asend.ports == $null) { asend_error 1 | halt } | asend_output portlist }
+      elseif ($1 == -list) { asend_list }
+      elseif ($1 == -add) { asend_add $2 }
+      elseif ($1 == -del) { asend_del $2 }
+      elseif ($1 == -reset) { unset %asend.temp.* | sockclose asend.* | asend_output All transfers has been stopped and removed! }
+      elseif ($1 == -stop) { asend_stop $2 }
+      elseif ($1 == -set) { asend_set $2 }
+      else { asend_error 4 }
+    }
+    else {
+      if ($0 == 1) { asend_send $1 $asend_port }
+      elseif (($0 == 2) && ($2 isnum)) { asend_send $1 $asend_port($2) }
+      else { asend_error 4 }
+    }
+  }
+}
+;; ----- Sending Preparation
+alias -l asend_send {
+  if ($0 < 2) { asend_error 4 }
+  if (($ip == $null) || ($serverip == $ip)) { asend_error 6 }
+  var %f = " $+ $sfile(c:) $+ ",%u
+  if (!$exists(%f)) { halt }
+  .socklisten asend. [ $+ [ $2 ] ] $2
+  if ($sockerr > 0) { asend_error 5 }
+  set %asend.temp. [ $+ [ $2 ] ] $+($1,ÿ,%f)
+  %u = http:// $+ $ip $+ : $+ $2 $+ / $+ $nopath($shortfn(%f))
+  if ($window(@asend_status)) { asend -stat }
+  if ($1 == -echo) { asend_output The file is now available at: $+(,%u,) }
+  elseif ($1 == -copy) { clipboard $null | clipboard %u | asend_output The url to the file has been copied to your clipboard! }
+  else { notice $1 $me wants to send you this file: $+(,%u,) }
+}
+;; ----- Status Window
+alias -l asend_stat {
+  if ($sock(asend.*,0) == 0) { if ($window(@asend_status)) { window -c @asend_status } | else { asend_error 9 } }
+  if (!$window(@asend_status)) { window -aodkCl -t11,24,31,62 @asend_status -1 -1 530 300 "Courier New" 11 }
+  else { clear @asend_status }
+  var %a = aline @asend_status
+  %a $str(-,75)
+  %a $chr(160) $+ Status    $+ $chr(9) $+ $chr(124) Progress $+ $chr(9) $+ $chr(9) $+ $chr(124) Filename $+ $chr(9) $+ $chr(124) Port
+  %a $+($str(-,11),+,$str(-,19),+,$str(-,30),+,$str(-,12))
+  var %x = 1,%p,%pc,%s = $chr(160),%t = $+($chr(9),$chr(124),%s)
+  while %x <= $sock(asend.*,0) {
+    %p = $gettok($sock(asend.*,%x),2,46)
+    %pc = $asend_pc($sock(asend.*,%x).sent,$file($asend_get(%p).file))
+    %a $+(%s,,$sock(asend.*,%x).status,,%t,,$str(*,$calc(%pc / 10)),,%t,,$asend_fill(%pc,3),$chr(37),,%t,,$left($nopath($asend_get(%p).file),28),,%t,,$asend_fill(%p,5),)
+    .timerasend.update. $+ %x 0 1 asend_update %x 
+    if (%x != $sock(asend.*,0)) { %a $+($str(-,11),+,$str(-,12),+,$str(-,6),+,$str(-,30),+,$str(-,12)) }
+    inc %x
+  }
+  %a $str(-,75)
+}
+alias -l asend_update {
+  if (($1 isnum) && ($window(@asend_status))) {
+    if ($sock($sock(asend.*,$1))) {
+      var %a,%p,%pc,%s = $chr(160),%t = $+($chr(9),$chr(124),%s),%q
+      %p = $gettok($sock(asend.*,$1),2,46)
+      %pc = $asend_pc($sock(asend.*,$1).sent,$file($asend_get(%p).file))
+      %a = rline @asend_status $calc(2 + 2 * $1) 
+      %q = $+(%s,,$iif(%pc == 100,complete,$sock(asend.*,$1).status),,%t,,$str(*,$calc(%pc / 10)),,%t,,$asend_fill(%pc,3),$chr(37),,%t,,$left($nopath($asend_get(%p).file),28),,%t,,$asend_fill(%p,5),)
+      if (%q != $line(@asend_status,$calc(2 + 2 * $1))) { %a %q }
+      .timerasend.update. $+ $1 0 1 asend_update $1 
+    }
+    else { .timerasend.update.* off | asend -stat }
+  }
+}
+on *:CLOSE:@asend_status:{ .timerasend.update.* off }
+;; ----- Additional Aliases
+alias -l asend_port {
+  if ($1 == $null) {
+    if (%asend.ports == $null) { asend_error 1 }
+    else { 
+      var %x = 1,%p 
+      while %x <= $numtok(%asend.ports,44) { 
+      %p = $gettok(%asend.ports,%x,44)) | if (($portfree(%p)) && (%p isnum)) { return %p } | inc %x }
+      asend_error 2
+    }
+  }
+  else {
+    if (($1 isnum) && ($portfree($1))) { return $1 }
+    else { asend_error 3 $1 }
+  }
+}
+alias -l asend_get {
+  if (($1 !isnum) || (%asend.temp. [ $+ [ $1 ] ] == $null)) { asend_error 7 }
+  return $gettok(%asend.temp. [ $+ [ $1 ] ],$iif($prop == file,2,1),255)
+}
+alias -l asend_pc { return $int($calc($1 / $2 * 100)) }
+alias -l asend_fill { return $str($chr(160),$calc($2 - $len($1))) $+ $1 }
+alias -l asend_add {
+  var %re = / $+ $chr(44) $+ ?(\d+(?:-\d+)?)/g,%x = 1,%y
+  if (($1 == $null) || ($regex($1,%re) == 0)) { asend_error 8 }
+  while (%x <= $regml(0)) {
+    if ((- !isin $regml(%x)) && (!$istok(%asend.ports,$regml(%x),44))) { %asend.ports = $addtok(%asend.ports,$regml(%x),44) }
+    elseif ((- isin $regml(%x)) && ($gettok($regml(%x),1,45) <= $gettok($regml(%x),2,45))) { 
+      %y = $gettok($regml(%x),1,45)
+      while %y <= $gettok($regml(%x),2,45) {
+        if (!istok(%asend_ports,%y,44)) { %asend.ports = $addtok(%asend.ports,%y,44) }
+        inc %y
+      }
+    }
+    inc %x
+  }
+  asend_output portlist
+}
+alias -l asend_del {
+  if ($1 != all) {
+    var %re = / $+ $chr(44) $+ ?(\d+(?:-\d+)?)/g,%x = 1,%y
+    if (($1 == $null) || ($regex($1,%re) == 0)) { asend_error 8 }
+    while (%x <= $regml(0)) {
+      if ((- !isin $regml(%x)) && ($istok(%asend.ports,$regml(%x),44))) { %asend.ports = $remtok(%asend.ports,$regml(%x),44) }
+      elseif ((- isin $regml(%x)) && ($gettok($regml(%x),1,45) <= $gettok($regml(%x),2,45))) { 
+        %y = $numtok(%asend.ports,44)
+        while (%y) {
+          if ($gettok(%asend.ports,%y,44) isnum $regml(%x)) { %asend.ports = $deltok(%asend.ports,%y,44) }
+          dec %y
+        }
+      }
+      inc %x
+    }
+    if ($numtok(%asend.ports,44) == 0) { unset %asend.ports | asend_output The portlist has been completely unset! }
+    else { asend_output portlist }
+  }
+  else { unset %asend.ports | asend_output The portlist has been removed! }
+}
+alias -l asend_stop {
+  if ($1 == $null) { asend -reset }
+  else {
+    if ($left($1,1) == $chr(35)) {
+      if ($abs($right($1,-1)) <= $sock(asend.*,0)) { var %t = $sock(asend.*,$right($1,-1)) | unset %asend.temp. [ $+ [ $gettok(%t,2,46) ] ] | sockclose %t | asend_output The transfer on port ( $+ $gettok(%t,2,46) $+ ) has been cancelled! }
+      else { asend_error 7 }
+    }
+    else {
+      if (!$sock(asend. $+ $1)) { asend_error 7 }
+      else { unset %asend.temp. [ $+ [ $1 ] ] | sockclose asend. $+ $1 | asend_output The transfer on port ( $+ $1 $+ ) has been cancelled! }
+    }
+  }
+}
+alias -l asend_list {
+  if ($sock(asend.*,0) == 0) { asend_error 9 }
+  else {
+    linesep -ag
+    var %x = 1
+    while %x <= $sock(asend.*,0) {
+      echo $color(ctcp) -ag * (asend) ( $+ %x $+ ) $nopath($asend_get($gettok($sock(asend.*,%x),2,46)).file) $+([,$sock(asend.*,%x).status on port $gettok($sock(asend.*,%x),2,46),])
+      inc %x
+    }
+    linesep -ag
+  }
+}
+alias -l asend_help {
+  if (!$window(@asend_help)) { window -aodkCl @asend_help -1 -1 530 300 "Courier New" 11 }
+  clear @asend_help
+  loadbuf -thelp @asend_help " $+ $script $+ "
+}
+alias -l asend_set {
+  if (($1 == $null) || ($1 == 8)) { unset %asend.bw | asend_output The upload bandwidth has been reset to 8kb/s }
+  elseif ($1 isnum) { set %asend.bw $1 | asend_output The upload bandwidth has been set to $1 $+ kb/s }
+  else { asend_error 4 }
+}
+alias -l asend_finish {
+  if (($2 !isnum) || (%asend.temp. [ $+ [ $2 ] ] == $null)) { asend_error 7 }
+  if ($1 == ok) { asend_output Transfer of $nopath($asend_get($2).file) on $2 successfully done. }
+  else { asend_output Transfer of $nopath($asend_get($2).file) on $2 failed. Client cancelled the transfer! }
+  unset %asend.temp. [ $+ [ $2 ] ]
+  sockclose asend. [ $+ [ $2 ] ]
+}
+alias -l asend_error {
+  if ($1 == 1) { asend_output error Please setup a portlist first! [/asend -help] }
+  if ($1 == 2) { asend_output error There is no free port within your portlist! }
+  if ($1 == 3) { asend_output error The chosen port ( $+ $2 $+ ) is in use! }
+  if ($1 == 4) { asend_output error There must be something wrong with the parameters! [/asend -help] }
+  if ($1 == 5) { asend_output error Some socket error has occured! (sockerr: $sockerr $+ ) }
+  if ($1 == 6) { asend_output error It seems that '$ip' doesn't return your global IP. Use '/localinfo <ip>' to set it manually. [http://ipid.shat.net/iponly/] }
+  if ($1 == 7) { asend_output error The chosen transfer doesn't exist! }
+  if ($1 == 8) { asend_output error Syntax error or invalid parameters! [/asend -help] }
+  if ($1 == 9) { asend_output Sorry, there aren't any Transfers at the moment. | halt }
+  else { asend_output error It seems that some error has occurred! [asend -help] }
+}
+alias -l asend_output {
+  linesep -ag
+  if ($1 == error) { echo $color(ctcp) -ag * (asend:error) $2- }
+  elseif ($1 == portlist) { echo $color(ctcp) -ag * (asend:portlist) %asend.ports }
+  else { echo $color(ctcp) -ag * (asend) $1- }
+  linesep -ag
+  if ($1 == error) { halt }
+}
+;; ----- Core
+;; Accepting incoming Client to socket asend.<PORT>
+;; + Closing the listening socket
+on 1:socklisten:asend.*:{
+  var %s $sockname,%p
+  sockaccept $+(t,%s) | sockclose %s | sockrename $+(t,%s) %s
+  %p = $gettok(%s,2,46)
+  asend_output Client ( $+ $sock(%s).ip $+ ) successfully connected on port %p for $nopath($asend_get(%p).file)
+}
+;; Reading the HTTP request
+on 1:sockread:asend.*:{
+  var %t,%s,%p,%f
+  %s = sockwrite -n $sockname
+  %p = $gettok($sockname,2,46)
+  %f = $asend_get(%p).file
+  sockread %t
+  tokenize 32 %t
+  if ($0 == 0) {
+    %s HTTP/1.1 200 OK
+    %s Accept-Ranges: bytes
+    %s Content-Length: $file(%f)
+    %s Connection: close
+    %s Content-Type: standard
+    %s Content-Disposition: attachment; filename= $+ $nopath(%f)
+    %s
+    asend_tosocket $sockname %f
+  }
+}
+alias -l asend_tosocket { if $sock($1) && $file($2-) { sockmark $1 Stream | asend_sock 0 $1 $file($2-) $2-  } }
+alias -l asend_sock {
+  if $sock($2).sq = 0 { if (!$sock($2)) || ($1 >= $3) { asend_finish ok $gettok($2,2,46) | return } }
+  if $sock($2).sq = 0 {
+    var %kb = $calc($iif(%asend.bw !isnum,8,%asend.bw) *1024)
+    var %t = $iif($calc($3 - $1) > %kb,%kb,$ifmatch)
+    bunset &data | bread " $+ $shortfn($4-) $+ " $1 %t &data
+    goto a | :error | reseterror | return | :a
+    !sockwrite -b $2 %t &data | tokenize 32 $calc($1 + %t) $2-
+  }
+  if $sock($2) { .timer -ho 1 0 asend_sock $1- } | else { if (%asend.temp. [ $+ [ $gettok($2,2,46) ] ] != $null) { asend_finish failed $gettok($2,2,46) } }
+}
+on 1:sockclose:asend.*:{ asend_finish failed $gettok($sockname,2,46) }
+on *:START:{ unset %asend.temp.* }
+[help]
+;-----------------------------------------------------------------------
+;  Instructions before usage
+;-----------------------------------------------------------------------
+;- Make sure that '$ip' returns your public global IP. If that is not
+;  the case because you're on a Bouncer or sth like that, you can
+;  update your $ip manually by using /localinfo <ip>. 
+;  You can find your IP on Websites which remotely check your IP like:
+;  http://ipid.shat.net/iponly/
+;  A helpful snippet would be '/getmyip'. I'm sure you can find
+;  one via google.
+;
+;- If you're behind a router or a firewall make sure that the ports
+;  you specify are forwarded.
+;
+;-----------------------------------------------------------------------
+;  /asend [port]
+;-----------------------------------------------------------------------
+;- echoes the file's url in the active window
+;- if 'port' isn't specified a portlist must be set up
+;
+; Examples:
+;  /asend
+;  /asend 1337
+;
+;-----------------------------------------------------------------------
+;  /asend nick [port]
+;-----------------------------------------------------------------------
+;- notices 'nick' with the file's url
+;- if 'port' isn't specified a portlist must be set up
+;
+; Examples:
+;  /asend fishbot
+;  /asend fishbot 1337
+;
+;-----------------------------------------------------------------------
+;  /asend -copy [port]
+;-----------------------------------------------------------------------
+;- copies the file's url into your clipboard
+;- if 'port' isn't specified a portlist must be set up
+;
+; Examples:
+;  /asend -copy 
+;  /asend -copy 1337
+;
+;-----------------------------------------------------------------------
+;  /asend -add <port[-port2][,port3,...]>
+;-----------------------------------------------------------------------
+;- adds ports to the portlist
+;- separated by commas you can add as much ports as you want to in one
+;  rush 
+;- ranges are valid as well
+;
+; Example:
+;  /asend -add 1337
+;  /asend -add 1337,31337-31339
+;  /asend -add 1337,31337-31339,1338
+;  /asend -add 31337-31339
+;
+;-----------------------------------------------------------------------
+;  /asend -del <port[-port2][,port3,...]|all>
+;-----------------------------------------------------------------------
+;- deletes ports from the port list
+;- separated by commas you can delete as much ports as you want in one
+;  rush 
+;- ranges are valid as well
+;- '/asend -del all' deletes the whole portlist
+;
+; Example:
+;  /asend -del 1337
+;  /asend -del 1337,31337-31339
+;  /asend -del 1337,31337-31339,1338
+;  /asend -del 31337-31339
+;  /asend -del all
+;
+;-----------------------------------------------------------------------
+;  /asend -plist
+;-----------------------------------------------------------------------
+;- simply lists the portlist
+;
+; Example:
+;  /asend -plist
+;
+;-----------------------------------------------------------------------
+;  /asend -list
+;-----------------------------------------------------------------------
+;- simply lists the tranfers
+;
+; Example:
+;  /asend -list
+;
+;-----------------------------------------------------------------------
+;  /asend -stat
+;-----------------------------------------------------------------------
+;- opens the status window with "live" update
+;- i'm not proud of it >_>
+;
+; Example:
+;  /asend -stat
+;
+;-----------------------------------------------------------------------
+;  /asend -reset
+;-----------------------------------------------------------------------
+;- cancels all transfers and listenings
+;
+; Example:
+;  /asend -reset
+;
+;-----------------------------------------------------------------------
+;  /asend -set [n]   //usage at your own risk//
+;-----------------------------------------------------------------------
+;- sets your upstream for every transfer
+;- it is set to 8kb/s per transfer. If you change it to let's say 
+;  12kb/s, mIRC tries to upload every file with ~12kb so if you're 
+;  sending 50 files at a time, mIRC tries to exceed your upstream. So 
+;  use it properly! It works fine with 8kb/s.
+;- "/asend -set" sets it back to 8kb/s
+;
+; Example:
+;  /asend -set 12
+;  /asend -set 
+;  /asend -set 8
+;
+;-----------------------------------------------------------------------
+;  /asend -stop [port|#n]
+;-----------------------------------------------------------------------
+;- stops the listening/transfer on a port
+;- if port isn't specified, all transfers will be stopped 
+;  (/asend -reset)
+;
+; Example:
+;  /asend -stop 1337
+;  /asend -stop #3
+;  /asend -stop 
+;
+;-----------------------------------------------------------------------
+;  Credits
+;-----------------------------------------------------------------------
+;This script was brought to you by Yannick 'npx' Baron (2007)
+;Contact: #cyberscripter @quakenet
+;
+;Special Thanks to
+;  tatjana, thor, nexus, Janno, for testing and stuff :)
+;  codemastr_ for his excellent review :)

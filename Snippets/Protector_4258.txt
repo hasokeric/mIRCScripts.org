@@ -1,0 +1,147 @@
+;Protector 1.05
+;Made by BlueThen on June 12, 2008.
+;To open, type /protector or right click the channel or status and click "Protector."
+;Use your mouse and cursor to aim, and click to shoot.
+alias protector {
+  window -paoCzdk0 +tnbL @Protector -1 -1 400 400 | window -paohCzdk0 +tndL @pro.ol -1 -1 800 800 
+  window -paohCzdk0 +tndL @pro.map -1 -1 800 800 | pro.init 
+}
+menu channel,status { 
+  Protector: protector  
+}
+alias -l pro.init {
+  set %pro.cas 0 | set %pro.q h | set %pro.blo 0 | set %pro.bots 0 | set %pro.lshot 0 | set %pro.time 0 | set %pro.fps 0
+  set %pro.pause n | set %pro.fcounter 0 | set %pro.shoot n | set %pro.health 100 | set %pro.bul 0 | set %pro.fticks $ticks
+  set %pro.mousex | set %pro.min1 1 | set %pro.min2 1 | set %pro.min3 1 | set %pro.temp1 1 | set %pro.temp2 1
+  set %pro.temp3 1 | set %pro.lim 100 | set %pro.c n | .timerpro1 -h 0 100 inc %pro.time
+  .timerpro2 0 3 dec %pro.lim 3 | %pro.x = 300 | set %pro.music y
+  while (%pro.x) {
+    drawline -r @pro.map $rgb($calc((%pro.x * 0.6)),50,$calc(255-(%pro.x * 0.85))) 3 0 $calc(2.666666667 * %pro.x) 800 $calc(2.666666667 * %pro.x)
+    drawline -r @pro.map $rgb(0,$calc(255-(100+(0.5 * %pro.x))),0) 0.7 0 $calc(600 +(%pro.x * 0.7)) 800 $calc(600 +(%pro.x * 0.7))
+    dec %pro.x
+  }
+  drawrect -f @pro.map 14 1 600 500 100 200 | drawdot @pro.map 14 30 650 500
+  drawline @pro.map 1 15 630 540 630 565 | drawline @pro.map 1 15 670 540 670 565
+  if (($file(C:WINDOWSMediatada.wav)) && (%pro.music == y)) splay -w C:WINDOWSMediatada
+  drawrect -f @pro.map 14 1 600 560 100 20 | pro.frame
+}
+alias -l pro.frame {
+  if (%pro.c != y) {
+    if ($r(1,%pro.lim) = 1) pro.spawn
+    if (%pro.lim < 5) .timerpro2 off
+    inc %pro.fcounter | set %pro.ltime $calc($ticks - %pro.oticks)
+    if ($calc($ticks - %pro.fticks) > 999) { set %pro.fps %pro.fcounter | set %pro.fcounter 0 | set %pro.fticks $ticks }
+    set %pro.oticks $ticks | drawcopy @pro.map 0 0 800 800 @pro.ol 0 0 800 800
+    drawline @pro.ol 15 15 650 480 $calc(650+(50* $cos($calc($pro.ga(%pro.mousex,%pro.mousey,650,480)+180)).deg)) $calc(480+(50* $sin($calc($pro.ga(%pro.mousex,%pro.mousey,650,480)+360)).deg))
+    %pro.z = %pro.bul
+    while (%pro.z > $calc(%pro.min1 - 1)) {
+      if ($hget(bull,%pro.z) == y) {
+        drawline @pro.ol 8 3 $hget(bulx, %pro.z) $hget(buly, %pro.z) $calc($hget(bulx,%pro.z) + ($calc(0.7 * %pro.ltime) * $cos($calc($hget(bula,%pro.z)+180)).deg)) $calc($hget(buly,%pro.z) + ($calc(0.7 * %pro.ltime) * $sin($calc($hget(bula,%pro.z)+360)).deg))
+        hadd -m bulx %pro.z $calc($hget(bulx,%pro.z) + ($calc(0.7 * %pro.ltime) * $cos($calc($hget(bula,%pro.z)+180)).deg))
+        hadd -m buly %pro.z $calc($hget(buly,%pro.z) + ($calc(0.7 * %pro.ltime) * $sin($calc($hget(bula,%pro.z)+360)).deg))
+        if ($hget(buly, %pro.z) > $hget(bulh, %pro.z)) {
+          hadd bull %pro.z n | drawdot @pro.map 14 $r(3,4) $hget(bulx,%pro.z) $hget(buly,%pro.z) 
+        }
+        if (($hget(buly, %pro.z) < 0) || ($hget(bulx,%pro.z) < 0) || ($hget(bulx,%pro.z) > 800)) hadd bull %pro.z n
+        set %pro.temp1 %pro.z
+      }
+      dec %pro.z
+    }
+    set %pro.min1 %pro.temp1 | %pro.y = %pro.bots
+    while (%pro.y > $calc(%pro.min2 - 1)) {
+      if ($hget(bota,%pro.y) == y) {
+        drawdot -r @pro.ol $hget(botc,%pro.y) $hget(bots,%pro.y) $hget(botx,%pro.y) $hget(boty,%pro.y)
+        if ($hget(botx,%pro.y) < 600) hinc botx %pro.y $calc($hget(bots,%pro.y)/100 * %pro.ltime)
+        else { dec %pro.health $calc(0.005* %pro.ltime) | hadd botx %pro.y 600 }
+        %pro.xyz = %pro.bul
+        while (%pro.xyz > $calc(%pro.min1 - 1)) {
+          if ($hget(bull,%pro.xyz) == y) {
+            if ($pro.dist($hget(bulx,%pro.xyz),$hget(buly,%pro.xyz),$hget(botx,%pro.y),$hget(boty,%pro.y)) < $calc($hget(bots,%pro.y) *1.5)) {
+              hadd -m bota %pro.y n | set %pro.te $r(20,50) | %pro.i = %pro.te | inc %pro.cas
+              if (($file(C:WINDOWSMediachimes.wav)) && (%pro.music == y)) splay -w C:WINDOWSMediachimes
+              while (%pro.i) {
+                hadd -m bloodx $calc(%pro.i + %pro.blo) $hget(botx,%pro.y)
+                hadd -m bloody $calc(%pro.i + %pro.blo) $hget(boty,%pro.y)
+                hadd -m bloodxv $calc(%pro.i + %pro.blo) $calc(($r(0,50) /100)* $iif($r(1,2) == 1,-1,1))
+                hadd -m bloodyv $calc(%pro.i + %pro.blo) $calc(($r(0,100) /100)* $iif($r(1,2) == 1,-1,1))
+                hadd -m bloodc $calc(%pro.i + %pro.blo) $rgb($r(75,125),0,0)
+                hadd -m blooda $calc(%pro.i + %pro.blo) y
+                hadd -m bloodh $calc(%pro.i + %pro.blo) $r(650,700) | dec %pro.i
+              }
+              inc %pro.blo %pro.te | %pro.e = 30
+              while (%pro.e) {
+                drawline -r @pro.map $rgb($r(75,125),0,0) $r(3,9) $hget(botx, %pro.y) $hget(boty, %pro.y) $calc($hget(botx, %pro.y) + ($r(5,30) * $cos($r(1,360)).deg)) $calc($hget(boty, %pro.y) + ($r(5,30) * $sin($r(1,360)).deg))
+                drawdot -r @pro.map $rgb($r(75,125),0,0) $r(1,6) $calc($hget(botx, %pro.y) + ($r(5,50) * $cos($r(1,360)).deg)) $calc($hget(boty, %pro.y) + ($r(5,50) * $sin($r(1,360)).deg))
+                dec %pro.e
+              }
+            }
+          }
+          dec %pro.xyz
+        }
+        set %pro.temp2 %pro.y
+      }
+      dec %pro.y
+    }
+    set %pro.min2 %pro.temp2 | %pro.u = %pro.blo
+    while (%pro.u > $calc(%pro.min3 - 1)) {
+      if ($hget(blooda, %pro.u) == y) {
+        drawline -r @pro.ol $hget(bloodc,%pro.u) 5 $hget(bloodx, %pro.u) $hget(bloody, %pro.u) $calc(($hget(bloodxv, %pro.u) * %pro.ltime) + $hget(bloodx, %pro.u)) $calc(($hget(bloodyv, %pro.u) * %pro.ltime) + $hget(bloody, %pro.u)) 
+        hadd bloodyv %pro.u $calc(0.1 + $hget(bloodyv, %pro.u))
+        hadd bloodx %pro.u $calc(($hget(bloodxv, %pro.u) * %pro.ltime) + $hget(bloodx, %pro.u))
+        hadd bloody %pro.u $calc(($hget(bloodyv, %pro.u) * %pro.ltime) + $hget(bloody, %pro.u))
+        if ($hget(bloody,%pro.u) > $hget(bloodh,%pro.u)) {
+          drawdot -r @pro.map $hget(bloodc,%pro.u) $r(2,7) $hget(bloodx, %pro.u) $hget(bloody, %pro.u) | hadd blooda %pro.u n
+        }
+        set %pro.temp3 %pro.u
+      }
+      dec %pro.u
+    }
+    set %pro.min3 %pro.temp3 | drawtext @pro.ol 4 Tahoma 30 500 15 Health: $round(%pro.health,0)
+    drawtext @pro.ol 15 Tahoma 30 500 50 Casualties: %pro.cas | drawtext @pro.ol 0 Tahoma 20 15 15 Made by BlueThen
+    drawtext @pro.ol 0 Tahoma 20 15 35 BlueThen.com | drawtext @pro.ol 0 Tahoma 20 15 55 FPS: %pro.fps
+    drawcopy $iif(%pro.q == h,-m, $null) @pro.ol 0 0 800 800 @protector 0 0 400 400 
+    if (%pro.health > 0) { 
+      if (%pro.pause == n) .timer -o 1 0 pro.frame 
+      else drawtext @protector 4 Tahoma 40 160 100 Paused
+    }
+    else drawtext @protector 4 Tahoma 40 160 100 GAMEOVER!
+  }
+  else unset %pro.*
+}
+menu @protector {
+  mouse: { set %pro.mousex $calc($mouse.x *2) | set %pro.mousey $calc($mouse.y *2) }
+  sclick: { pro.shoot | set %pro.shoot y }
+  uclick: { set %pro.shoot n }
+}
+on *:keydown:@protector:*: {
+  if ($keyval == 81) set %pro.q $iif(%pro.q == h,l,h)
+  if ($keyval == 80) { 
+    set %pro.pause $iif(%pro.pause == y,n,y) 
+    if (%pro.pause == n) {
+      set %pro.ltime 1 | set %pro.oticks $ticks | pro.frame
+    }
+  }
+  if ($keyval == 77) set %pro.music $iif(%pro.music == y,n,y)
+}
+alias -l pro.shoot {
+  if (($calc($ticks - %pro.lshot) > 150) && (%pro.pause == n)) {
+    if (($file(C:WINDOWSMediastart.wav)) && (%pro.music == y)) splay -w C:WINDOWSMediastart
+    inc %pro.bul | hadd -m Bula %pro.bul $pro.ga(%pro.mousex,%pro.mousey,650,480)
+    hadd -m Bulx %pro.bul $calc(650+(50* $cos($calc($hget(bula, %pro.bul)+180)).deg))
+    hadd -m Buly %pro.bul $calc(480+(50* $sin($calc($hget(bula, %pro.bul)+360)).deg))
+    hadd -m Bull %pro.bul y | hadd -m Bulh %pro.bul $r(675,700) | set %pro.lshot $ticks
+  }
+}
+alias -l pro.spawn {
+  inc %pro.bots | hadd -m bota %pro.bots y
+  hadd -m botx %pro.bots 0 | hadd -m boty %pro.bots $r(650,675)
+  hadd -m botc %pro.bots $rgb($r(200,255),$r(200,255),0) | hadd -m bots %pro.bots $r(18,27)
+}
+on *:close:@protector: { window -c @pro.ol | window -c @pro.map | .timerpro? off | unset %pro.* | set %pro.c y }
+alias -l pro.dist return $sqrt($calc(($3 - $1)^2 + ($4 - $2)^2)) 
+alias -l pro.ga { 
+  %p1.x = $1 | %p1.y = $2 | %p2.x = $3 | %p2.y = $4 | %p3.x = %p2.x | %p3.y = %p1.y | %opposite = $sqrt($calc((%p2.x - %p3.x)^2 + (%p2.y - %p3.y)^2)) 
+  %hypotenuse = $sqrt($calc((%p2.x - %p1.x)^2 + (%p2.y - %p1.y)^2)) | %angle = $asin($calc( %opposite / %hypotenuse )).deg 
+  if (%p1.y < %p2.y) %angle = $calc(360 - %angle) | if ((%p1.x > %p2.x) && (%p1.y > %p2.y)) %angle = $calc(180 - %angle) 
+  elseif ((%p1.x > %p2.x) && (%p1.y < %p2.y)) %angle = $calc(180 +(360 - %angle)) | return %angle
+}

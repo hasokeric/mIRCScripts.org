@@ -1,0 +1,76 @@
+; ------------
+; NSLookup COM
+; ------------
+;
+; Syntax: $nslookup(<target>[,server]).[da|si|go|od|vncs|rand]
+;
+; [Server] must be an IP Adress
+;
+; Property .si uses one of the public nameserver from ScrubIt
+; Property .go uses one of the public nameserver from google
+; Property .od uses one of the public nameserver from OpenDNS
+; Property .da uses one of the public nameserver from dnsadvantage
+; Property .vnsc uses one of the public nameservers from vnsc-pri.sys.gtei.net
+; Property .rand uses a random server of the public nameservers in this list
+;
+; It can't resolve netbios names (well it can, maybe you have a win 2008 dns server with a GlobalNames zone ;))
+;
+; Contact: http://sephiroth.bounceme.net/?s=about
+;
+; Note: It should be compatible with all Windows Versions from XP to 7, i have tested it on german, english and french version.
+;       If it does not work for you, feel free to contact me.
+;
+; If you have Problems with Scripts that use ComObject please install Windows Scripting Host 5.7 or higher
+;  - http://www.microsoft.com/downloads/details.aspx?FamilyID=47809025-D896-482E-A0D6-524E7E844D81&displaylang=en
+;
+alias nslookup {
+  var %id = $md5($ticks),%match,%tmp,%out
+  .comopen %id wscript.shell 
+  if ($comerr) { return }
+  var %google = $gettok(8.8.4.4 8.8.8.8,$r(1,2),32)
+  var %OpenDNS = $gettok(208.67.222.222 208.67.220.220,$r(1,2),32)
+  var %ScrubIt = $gettok(67.138.54.100 207.225.209.66,$r(1,2),32)
+  var %dnsadvantage = $gettok(156.154.70.1 156.154.71.1,$r(1,2),32)
+  var %vncs = $gettok(4.2.2.1 4.2.2.2 4.2.2.3 4.2.2.4 4.2.2.5 4.2.2.6,$rand(1,6),32)
+
+  var %ns = $gettok(%OpenDNS %google %ScrubIt %dnsadvantage %vncs,$findtok(od go si da vncs,$prop,1,32),32)
+  if ($prop == rand) { %ns = $gettok(%OpenDNS %google %ScrubIt %dnsadvantage %vncs,$r(1,5),32) }
+  .comclose %id $com(%id,run,1,bstr*,% $+ comspec% /c nslookup $1 $iif(%ns,%ns,$iif($isip($2),$2)) > %id,uint,0,bool,true)
+  if ($isip($1)) { 
+    noop $read(%id,n,3)
+    while ($read(%id,$calc($readn +1))) {
+      %match = $remove($ifmatch,$chr(44))
+      while ($gettok(%match,1,32)) {
+        var %tmp = $remove($ifmatch,$chr(32))
+        if (!$istok(Address: Name: name =,%tmp,32)) {
+          if (!$isip(%tmp)) { %out = $addtok(%out,%tmp,44) }
+        }
+        %match = $deltok(%match,1,32)
+
+      }
+    }
+  }
+  else {
+    var %x = $read(%id,n,3)
+    if ($gettok(%x,1,32) != ***) {
+      while ($read(%id,$calc($readn +1))) {
+        %match = $remove($ifmatch,$chr(44))
+        while ($gettok(%match,1,32)) {
+          var %tmp = $remove($ifmatch,$chr(32))
+          if ($isip(%tmp)) { %out = $addtok(%out,%tmp,44) }
+          %match = $deltok(%match,1,32)
+        }
+      }
+    }
+  }
+  .remove %id
+  return %out
+}
+alias -l isip {
+  var %re = /^\s*((?=.*::.*)(::)?([0-9A-F]{1,4}(:(?=[0-9A-F])|(?!\2)(?!\5)(::)|\z)){0,7}|((?=.*::.*)(::)?([0-9A-F]{1,4}(:(?=[0-9A-F])|(?!\7)(?!\10)(::))){0,5}|([0-9A-F]{1,4}:){6})((25[0-5]|(2[0-4]|1[0-9]|[1-9]?)[0-9])(\.(?=.)|\z)){4}|([0-9A-F]{1,4}:){7}[0-9A-F]{1,4})\s*$/i
+  if ($len($1)) {
+    if ($regex($1,%re) && $regml(1) == $1) { return $true }
+    return $iif($longip($longip($1)) == $1 && . isin $1,$true,$false)
+  }
+  return $false
+}

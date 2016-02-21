@@ -1,0 +1,70 @@
+/*
+Acronym finder! by ambiguous  (Bahamut on ms.org) 
+Contact: ambiguous @ #msl on irc.swiftirc.net 
+
+Another simple socket. I made this in request of a friend and I figured it might serve some use to others.
+
+What it does? Simple, it searches acronyms based on a given input; dumping the results into a new window for your viewing pleasure.
+Why use it? There are some acronyms that I can't seem to remember, and some that I don't even know. This can fix that. ;)
+Syntax? /acronym <acronym>
+
+Note: When opening the new window, you'll notice that there is an editbox. Why? Because, it sits there for you to search for another acronym by typing something in the editbox. Makes it easier than constantly typing /acronym.
+
+Hope this proves useful! Regards,
+*/
+
+alias -l aw return @acro. $+ $1
+alias -l err echo -aecgt info $1-
+alias acronym {
+  if (!$sock(acro)) && ($1) {
+    if ($window($aw($1))) {
+      window -a $aw($1)
+    }
+    else {
+      sockopen acro acronyms.thefreedictionary.com 80
+      sockmark acro $1
+      window -ae $aw($1)
+      var %b $chr(2), %a aline $aw($1)
+      %a $+(%b,Abbreviation,%b) $str($chr(160),3) $+(%b,Acronym definition,%b)
+      %a $chr(160)
+    }
+  }
+  else err * /acronym: $iif($sock(acro),Socket is currently processing a query.,insufficient parameters.)
+}
+
+on *:sockopen:acro:{
+  var %% sockwrite -nt acro
+  %% GET $+(/,$sock(acro).mark) HTTP/1.1
+  %% Host: acronyms.thefreedictionary.com $+ $str($crlf,2)
+}
+
+on *:sockread:acro:{
+  if (!$sockerr) {
+    var %r,  %s sockclose acro
+    sockread %r
+    if (Word not found isin %r) || (Not available isin %r) {
+      err *** The word was not found in the acronym dictionary.
+      %s
+    }
+    if (<div id=MainTxt><table class=AcrFinder isin %r) {
+      var %x 1
+      noop $regex(ac,%r,/<td class=acr>(.*?)<\/td><td>(.*?)<\/td>/gi)
+      while ($regml(ac,%x)) {
+        aline $aw($sock(acro).mark) $v1 $str($chr(160),3) $regml(ac,$calc(%x +1))
+        inc %x 2
+      }
+      %s
+    }
+  }
+  else {
+    err *** Socket error: Could not connect.
+    sockclose acro
+  }
+}
+
+on *:input:@acro.*:{
+  if ($left($1,1) != /) {
+    acronym $1
+    if ($fline($target,/\Q***\E/g,1,2)) window -c $target
+  }
+}

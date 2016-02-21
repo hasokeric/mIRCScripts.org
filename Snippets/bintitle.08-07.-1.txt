@@ -1,0 +1,43 @@
+autor: deadelvis 
+email: deadelvismad@hotmail.com
+
+this is just a simple miscdoc that i made just to show u, how to change the word mIRC on titlebar, 
+without using 1 hexadecimal program! 
+to do this u need to close the mirc.exe file that u want to change and execute this command from another
+mirc.exe file! 
+
+for each mirc version, there is diferent values. here they are:
+
+
+mIRC 6.03 - /bwrite C:\yourscript\mirc.exe 1498212 <title_here> 
+;<title_here> max of 19 chars long
+
+mirc 6.02 - /bwrite C:\yourscript\mirc.exe 1489716 <title_here>
+;<title_here> max of 19 chars long 
+
+mirc 6.01 - /bwrite C:\yourscript\mirc.exe 1440040 <title_here>
+;<title_here> max of 19 chars long
+
+mirc 6.0 - /bwrite C:\yourscript\mirc.exe 1432996 <title_here
+;<title_here> max of 19 chars long 
+
+mirc 5.91 - /bwrite C:\yourscript\mirc.exe 1417764 <title_here>
+;<title_here> max of 19 chars long 
+
+mirc 5.82 - /bwrite C:\yourscript\mirc.exe 1289256 <title_here>
+;<title_here> max of 19 chars long 
+
+mirc 5.81 - /bwrite C:\yourscript\mirc.exe 1217560 <title_here>
+;<title_here> max of 4 chars long 
+
+mirc 5.8 - /bwrite C:\yourscript\mirc.exe 1238956 <title_here>
+;<title_here> max of 19 chars long 
+
+mirc 5.71 - /bwrite C:\yourscript\mirc.exe 1196644 <title_here>
+;<title_here> max of 19 chars long 
+
+
+change "C:\yourscript\" to the dir there is the *.exe file
+
+
+this way is much secure to do this task, without breaking your mirc.exe file! 

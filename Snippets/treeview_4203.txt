@@ -1,0 +1,94 @@
+;###SNIPPET INFORMATION###
+; Name: $treeview
+; Author: zonIRC
+; Version: 1
+; mIRC Version: 6.34
+; Contact: zonirc@email.com
+;               #klkite (network: undernet)
+;               zonirc (yahoo messenger)
+; Tested: mIRC 6.34+Windows XP Pro SP2
+;              mIRC 6.21+Windows XP Pro SP2
+;
+;
+; Description:
+;  A simple snippet that allow you to retrieve the size and position of treeview.
+;
+; Syntax:
+;  $treeview(size|x|y|w|h|pos|position|coord)
+;    size: return the treeview actual size(it can be a width or height depending to the treeview position)
+;    x: return the treeview x coordinate(the treeview left position relative to the desktop)
+;    y: return the treeview y coordinate(the treeview top position relative to the desktop)
+;    w: return the treeview width
+;    h: return the treeview height
+;    pos: return the position of treeview(where 0=bottom 1=top 2=left 3=right)
+;    position: return the position of treeview(in word format)
+;    coord: return the x y w h of the treeview
+;    Below parameter also can be used, but its doesnt related with treeview.
+;    sbpos: return the position of switchbar
+;    sbsize: return the size of switchbar(it can be a width or height depending to the switchbar position)
+;    inin4: return the item 'n4' of 'options' topic in mirc.ini
+;    inin5: return the item 'n5' of 'options' topic in mirc.ini
+;    inin8: return the item 'n8' of 'options' topic in mirc.ini
+;    border: return the left and right window border size(without internal border)
+;
+; Sample Script:
+;    This sample make a new treeview by using a list window.
+;    The window itself have been put on desktop so it can be ontop of all windows.
+;    The APPACTIVE event would remove the ontop setting of that windows when ever mIRC
+;    not an active application.(However theres a problem with mIRC Scripts Editor and its
+;    internal dialog, where the window still on top of all)
+;
+;    alias newtreeview {
+;        window -doBlh +dL @treeview $treeview(coord)
+;        clear @treeview
+;        var %loop = 1
+;        while ($window(*,%loop)) {
+;          aline @treeview $v1 $+([Title: ,$window($v1).title,])
+;          inc %loop
+;      }
+;    }
+;    ON *:APPACTIVE:{
+;      if ($window(@treeview)) {
+;        if (!$appactive) window -u @treeview
+;        else window -o @treeview
+;      }
+;    }
+;
+;###END OF INFORMATION###
+
+alias treeview {
+  ;$treeview(size|wsize|hsize|x|y|w|h|pos|position|coord)
+
+  saveini
+
+  var %inin4 = $readini($mircini, options, n4)
+  var %inin5 = $readini($mircini, options, n5)
+  var %inin8 = $readini($mircini, options, n8)
+
+  ;if you use mirc mIRC 6.32 and above, then you can put the above line inside this statement and
+  ;change '$gettok(%inin8,3,44)' to '$treebar'. Therefore its only save the current setting when
+  ;the treebar is on. This code have been write to make it work on 6.21 also.
+
+  if ($gettok(%inin8,3,44)) {
+
+    var %pos = $gettok(%inin8,2,44)
+    var %position = $replacex(%pos,0,bottom,1,top,2,left,3,right)
+
+    var %sbpos = $gettok(%inin4,21,44)
+    var %sbsize = $iif($switchbar && %sbpos isnum $replacex(%pos,2,2-3,3,2-3),$gettok(%inin5,32,44),0)
+
+    var %wsize = $calc($window(-2).w - $window(-3).w $iif(%pos isnum 2-3,- %sbsize))
+    var %hsize = $gettok(%inin8,23,44), %size = $gettok(%inin8,4,44)
+
+    var %border = $calc(%wsize - %size)
+
+    var %w = $iif(%pos isnum 2-3,$int($calc(%wsize - %border $replacex(%pos,2,$null,3,/ 2))),$window(-3).w)
+    var %h = $iif(%pos isnum 2-3,$window(-3).h,%hsize)
+    var %x = $iif(%pos = 3,$calc($window(-2).x + $window(-3).w + %sbsize),$iif(%pos = 2,$int($calc($window(-2).x + (%border / 2))),$window(-3).x))
+    var %y = $iif(!%pos,$calc($window(-3).y + $window(-3).h),$iif(%pos = 1,$calc($window(-3).y - %h),$window(-3).y))
+
+    var %coord = %x %y %w %h
+  }
+
+  return $($+(%,$1),2)
+}

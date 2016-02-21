@@ -1,0 +1,135 @@
+;Hello, and thank you for using the Chanlev Clear system.
+;Once you preform the command /clearchanlev do nothing at quakenet, as it may cause you to disconnect.
+;
+;Use /clearchanlev #channel to remove everyone but yourself
+;Use /clearchanlev -r #channel to remove everyone, thus removing Q from the channel. 
+;Use the d switch (-d or -rd) to show debug messages.
+;
+;For the command to succeed, you must:
+;--Be on the channel.
+;--Have Q on the channel
+;--Have owner status (+n) on the channel
+
+;Documentation of a specific line is shown UNDER the line.
+
+
+alias clearchanlev {
+  if ($network !=== QuakeNet) { echo -atgce info * /clearchanlev: Invalid network. | halt }
+  ;First, check if the network your on is NOT quakenet. If it does, echo an error, and halt.
+  if (!$1) || ((-* iswm $1) && (!$2)) { echo -agtce info * /clearchanlev: Insufficient parameters. | halt }
+  ;Second, since the #channel parameter is a must, we need to make sure it exists. If it doesn't, error, then halt.
+  if (-* !iswm $1) && (#* !iswm $1) { echo -atgce info * /clearchanlev: Invalid parameters. | halt }
+  ;Third, the parameters specified can be only channel and switches. If it's not, error and halt.
+  unset %cc.*
+  ;Remove all vars associated with the alias.
+  set %cc.chan $iif(-* iswm $1,$2,$1)
+  ;set the channel
+  if (Q !ison %cc.chan) { echo -atgce info * /clearchanlev: No Q detected on $v2 $+ . | unset %cc.* | halt }
+  ;must have Q on the channel. (meaning that you have to be on the channel to check it).
+  if (-* iswm $1) {
+    ;If there are switches:
+    if (- == $1) { echo -atgce info * /clearchanlev: Invalid parameters. | halt }
+    ;If none, error+halt
+    if (r isin $1) {
+      if ($input(WARNING! This action is about to remove Q from your channel. $crlf $+ This action is irreversible. $crlf $crlf $+ Are you sure you want to continue?,ywd,WARNING - Are You Sure?) == $true) { set %cc.remove 1 }
+      ;the 'r' switch indicates that you want to remove Q from the channel. Since it's dangerous and we don't want accidents happen, there is a MakeSure Input.
+      else { halt }
+      ;if you pressed cancel at the input box, halt.
+    }
+    if (d isin $1) { 
+      set %cc.debug 1
+      echo -atgce info * /clearchanlev: Debug mode: ON.
+      ;If d is specified, activate debug mode.
+    }
+  } 
+  echo -atgce info * /clearchanlev: Initiating Clear Chanlev.
+  who $me n%na
+  ;send a request to get your own Q account.
+  if (%cc.debug) { echo -atgce info * /clearchanlev: Recieving own auth... }
+  .enable #clearchanlev.who
+}
+
+#clearchanlev.who off
+raw 354:*:set %cc.myqacc $3 | halt
+raw 315:*:{
+  .timer 1 0 .disable #clearchanlev.who 
+  ;We have to use timer since a group can't be canceled from within itself (a timer is counted as an outside command)
+  if (%cc.debug) { echo -atgce info * /clearchanlev: Own auth recieved. %cc.myqacc }
+  .msg Q chanlev %cc.chan
+  .enable #clearchanlev
+  ;prepare for the userlist.
+  halt
+}
+#clearchanlev.who end
+
+#clearchanlev off
+on ^*:notice:*:?:{
+  if ($network == Quakenet) && ($nick == Q) {
+    haltdef
+    if (Known users on* iswm $1-) { halt }
+    if (Username*Flags*Last join*Last changed iswm $1-) {
+      ;After this line, the userlist begins. so we set variables and prepare to write to the variable.
+      set %cc.write 1 
+      if (%cc.debug) { echo -atgce info * /clearchanlev: Recieving user list into % $+ cc.users... }
+      halt 
+    }
+    if (End of list. == $1-) { halt }
+    if (Done. == $1) { halt }
+    if (You do not have sufficient access on* iswm $1-) { 
+      unset %cc.* 
+      .timer 1 0 .disable #clearchanlev*
+      echo -atgce info * /clearchanlev: Action stopped due to insufficient access. 
+      ;Stop if you don't have any access on the channel.
+    }
+    if (Total:* iswm $1-) { 
+      if (%cc.write) {
+        if (%cc.debug) { echo -atgce info * /clearchanlev: User list recieved. beginning to remove users. }
+        cc.finish 
+        ;Remove (remaining) users if reached to the end.
+      }
+      else {
+        ;If writing is disabled, you don't have enough access. Stop.
+        unset %cc.* 
+        .timer 1 0 .disable #cc.* #clearchanlev 
+        echo -atgce info * /clearchanlev: Action stopped due to insufficient access. 
+      }
+      halt 
+    }
+    if ($1 == %cc.myqacc) {
+      if  (n !isin $2) {
+        unset %cc.write 
+        echo -atgce info * /clearchanlev: You don't have the required access level on %cc.chan $+ . 
+        ;disable writing if you don't have +n
+        halt
+      }
+      if (%cc.remove) && (%cc.write) {
+        if (%cc.debug) { echo -atgce info * /clearchanlev: Writing to var: %cc.myqacc }
+        set %cc.users $addtok(%cc.users,$chr(35) $+ %cc.myacc,32) 
+        ;If you chose to remove Q from the start, add yourself to the userlist as well.
+      }
+    }
+    if (%cc.write) && ($1 != %cc.myqacc) {
+      if (%cc.debug) { echo -atgce info * /clearchanlev: Writing to var: $1 }
+      set %cc.users $addtok(%cc.users,#$1,32)
+      ;Write the username to the userlist variable.
+    }
+    if ($numtok(%cc.users,32) == 18) {
+      if (%cc.debug) { echo -atgce info * /clearchanlev: User list is over 18, remove 18 users. %cc.users }
+      .timer 1 $iif(%cc.timer,$v1,0) .msg Q removeuser %cc.chan %cc.users
+      inc -z %cc.timer 2
+      inc %cc.rounds
+      unset %cc.users
+
+      ;The limit for the removeuser command on Q is 18 users. so if the limit is reached, remove and dump the userlist.
+    }
+  }
+}
+#clearchanlev end
+;This alias is made to remove the remaining users.
+alias -l cc.finish {
+  if (%cc.debug) { echo -atgce info * /clearchanlev: removing $iif(%cc.rounds,remaining) $numtok(%cc.users,32) users. }
+  .timer 1 $iif(%cc.timer,$v1,0) .msg Q removeuser %cc.chan %cc.users
+  echo -atgce info * /clearchanlev: Successfuly removed $calc((18 * %cc.rounds ) + $numtok(%cc.users,32)) users on %cc.chan $+ .
+  unset %cc.* 
+  .disable #clearchanlev* 
+}

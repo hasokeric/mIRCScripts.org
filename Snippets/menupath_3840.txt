@@ -1,0 +1,57 @@
+; --------------------------------------
+; $menupath - by Flobse
+; 
+; This snippet is to create menupath's for DCX.
+; So u can easy add or delete Items from your DCX-Menu without changeing all pathes manually.
+; Thats a very small snippet without any error-checking. (You should allready know DCX-Menu's)
+;
+; --------------------------------------
+; Syntax: 
+;
+; /menupath reset 
+; To start with menupathid 1.
+;
+; $menupath(path)
+; To return the path in DCX-format.
+; Pathes are like /help menus - in standard mirc-menus.
+;
+; That means:
+; $menupath(.) == 1
+; $menupath(..) == 1 1
+; $menupath(..) == 1 2
+; $menupath(...) == 1 2 1
+; and so on..
+;
+; --------------------------------------
+; Example: (Needs dcx.dll with accompanying aliases to work)
+;
+; alias example {
+;   if ($xpopup(ex).ismenu) { xpopup -d ex }
+;   xpopup -c ex officexp
+;   xpopup -p ex 15461355 10855845 10855845 10855845 10855845 8882055 13158600 5263440 5263440 0
+;   var %p xpop -a ex
+;   menupath reset
+;   %p $menupath(.) $chr(9) + 1 0 Item1
+;   %p $menupath(.) $chr(9) +s 2 0 Item2
+;   %p $menupath(..) $chr(9) + 3 0 Subitem2-1
+;   %p $menupath(..) $chr(9) +s 4 0 Subitem2-2
+;   %p $menupath(...) $chr(9) + 5 0 Subitem2-2-1
+;   %p $menupath(..) $chr(9) + 6 0 Subitem2-3
+;   %p $menupath(.) $chr(9) + 7 0 Item3 
+;   xpopup -s ex + $mouse.dx $mouse.dy
+; }
+; 
+; on *:signal:XPopup-ex: { echo -a Click on ID: $1 - $replace($1,1,Item1,3,Subitem2-1,5,Subitem2-2-1,6,Subitem2-3,7,Item3) }
+; 
+; --------------------------------------
+; ## #Flobse @ Quakenet - Scripter@Flobse.de - UIN: 152759920 ##
+
+
+alias menupath { 
+  if (($1- == reset) || ($prop == reset)) { hadd -m System Menu 0 | return $true }
+  elseif ($hget(System,Menu) != $null) {
+    hadd System Menu $iif($len($1) > 1,$gettok($hget(System,Menu),1- [ $+ [ $calc($len($1) -1) ] ],32)) $calc($gettok($hget(System,Menu),$len($1),32) +1) 0
+    return $gettok($hget(System,Menu),1- $len($1),32)
+  }
+  return $false
+}

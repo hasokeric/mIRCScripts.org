@@ -1,0 +1,283 @@
+; =============================================================================================== ;
+; =                                       Blackjack Aliases                                     = ;
+; =============================================================================================== ;
+;
+; I got bored once more xD
+; Could help you making blackjack games with the official rules ;)
+;
+; Blackjack Rules can be found here: http://www.blackjackinfo.com/blackjack-rules.php
+;
+; =============================================================================================== ;
+; =                                             Cards                                           = ;
+; =============================================================================================== ;
+;
+; Cardprefix
+; P = Englisch     | German
+; ----------------------------
+; D = Diamond      | Schell
+; H = Heart        | Herz
+; S = Spade        | Blatt
+; C = Club         | Pik
+;
+; Cardsuffix
+; S = Card         | Worth
+; ----------------------------
+; N = Number       | N
+; T = Ten (10)     | 10
+; J = Jack (Bube)  | 10
+; Q = Queen (Dame) | 10
+; K = King (König) | 10
+; A = As (Ass)     | 1 OR 11
+;
+; Note: ($cardpoints converts it to get the best points e. G. you got 4 ases makes 14 points)
+;
+; =============================================================================================== ;
+; =                                            Aliases                                          = ;
+; =============================================================================================== ;
+;
+;  - $cards([cards])
+;    returns all 52 cards
+;    returns all cards "left" (removes <cards>, can be tokenized by , or space)
+;  
+;  - $worth(<card>)[.c]
+;    returns the worth of a single card (e. G. $worth(D-T) returns 10)
+;    if the property "c" (color) is specified it returns the worth of the color
+;    (Diamond [1] < Heart [2] < Spade [3] < Club [4])
+;    Note: $worth() of ases returns ALWAYS 11
+;
+;  - $randtok(string,token)
+;    returns a random token
+;    Example: $randtok($cards(%cards.player1,%cards.player2,%cards.bank),32)
+;
+;  - $split(<card 1> <card 2> [bankcard])
+;    returns $true if you can split your cards
+;    otherwise it returns $false
+;    [bankcard] is optional but it allows a deeper split-search if specified
+;
+;  - $double(<card 1> <card 2> [bankcard])
+;    returns $true if you can double your cards
+;    otherwise it returns $false
+;    [bankcard] is optional but it allows a deeper double-search if specified
+;
+;  - $hard-hand(<cards>)
+;    If you got no as or an as that counts 1 (cuz you would be above 21 otherwise) it returns $true
+;    otherwise it returns $false 
+;
+;  - $soft-hand(<cards>)
+;    returns $true if the cards if no as on the hand count's 1
+;    otherwise it returns $false
+;
+;  - $blackjack(<cards>)
+;    returns $true if <cards> give a blackjack
+;    otherwise it returns $false
+;
+;  - $cardpoints(<cards>)[.all]
+;    returns the points all cards specified would give
+;    (counts 2 ases as 12, 3 as 13 and 4 as 14)
+;    if the property .all is specified it will use ases all the time as 11
+;
+; =============================================================================================== ;
+; =                                            Contact                                          = ;
+; =============================================================================================== ;
+;
+; You can contact me on QuakeNet in #cyberscripters, #alcatraz or #help.script if you have
+; questions about this code snippet.
+;
+; E-Mail: christopher.russ@gmail.com
+; Web: http://sephiroth.bounceme.net/
+;
+; =============================================================================================== ;
+; =                                            Updates                                          = ;
+; =============================================================================================== ;
+;
+; * Fixed $hard-hand returning sometimes $false where it should return $true
+; * Fixed a typo in the readme
+; - Removed some comments that where not needed
+; + Added better compatibility for strings with ,
+;
+; =============================================================================================== ;
+; =                                            Install                                          = ;
+; =============================================================================================== ;
+; 
+; Simply paste those aliases into your remote section (ALT+R)
+; Best thing would be you create a new file for them ;)
+;
+; =============================================================================================== ;
+; =                                           Uninstall                                         = ;
+; =============================================================================================== ;
+;
+; Remove the aliases from your remote section (ALT+R)
+; or unload the script file if you have specified a new one
+; 
+; =============================================================================================== ;
+; =                                         End of README                                       = ;
+; =============================================================================================== ;
+;
+; DON'T MODIFY ANYTHING BELOW IF YOU DON'T KNOW WHAT YOU ARE DOING!
+alias cards {
+  ;syntax
+  ; $cards
+  ; $cards(D-J D-3,C-T)
+  !tokenize 44 $1-
+  !tokenize 32 $1-
+  !var %color = D- H- S- C- 
+  !var %cards = 2 3 4 5 6 7 8 9 T J Q K A
+  !var %output,%tmp,%c
+  while (%color) {
+    %tmp = $gettok(%color,1,32)
+    %c = %cards
+    while (%c) {
+      if (!$istok($1-,%tmp $+ $gettok(%c,1,32),32)) {
+        %output = %output %tmp $+ $gettok(%c,1,32)
+      }
+      %c = $deltok(%c,1,32)
+    }
+    %color = $deltok(%color,1,32)
+  }
+  !return %output
+}
+alias worth {
+  ;syntax
+  ; $worth(<card>)
+  ; $worth(<card>).c
+  !var %color = D H S C
+  if ($prop == c) {
+    !return $findtok(%color,$gettok($1,1,45),1,32)
+  }
+  !return $gettok(2 3 4 5 6 7 8 9 10 10 10 10 11,$findtok(2 3 4 5 6 7 8 9 T J Q K A,$gettok($1,2,45),1,32),32)
+}
+alias randtok {
+  ;syntax
+  ; $randtok(<string>,<token>)
+  !return $gettok($1,$r(1,$numtok($1,$2)),$2)
+}
+/*
+Split rule:
+Bank>   2 3 4 5 6 7 8 9 T A 
+2,2     - - x x x x - - - - 
+3,3     - - x x x x - - - - 
+4,4     - - - - - - - - - - 
+5,5     - - - - - - - - - - 
+6,6     - x x x x - - - - - 
+7,7     x x x x x x - - - - 
+8,8     x x x x x x x x x x 
+9,9     x x x x x - x x - - 
+10, 10  ------ never ------
+As, As  x x x x x x x x x x 
+*/
+alias split {
+  ;syntax
+  ; $split(<card 1> <card 2> [open bankcard])
+  !tokenize 44 $1-
+  !tokenize 32 $1-
+  !var %f = !return $false,%t = !return $true
+  !var %1 = $worth($1),%2 = $worth($2),%3 = $worth($iif($3,$3,H-2))
+  if ($3) {
+    if (%1 != 10) && (%2 != 10) {
+      if (%1 == %2) {
+        if (%1 == 11) { %t }
+        elseif (%1 isnum 7-9) && (%3 == 2) { %t }
+        elseif (%1 isnum 6-9) && (%3 == 3) { %t }
+        elseif (%1 isnum 6-9 || %v1 isnum 2-3) && (%3 isnum 4-6) { %t }
+        elseif (%1 isnum 7-8 || %v1 isnum 2-3) && (%3 == 7) { %t }
+        elseif (%1 isnum 8-9) && (%3 isnum 8-9) { %t }
+        elseif (%1 == 8) && (%3 == 9) { %t }
+        %f
+      } | %f
+    } | %f
+  }
+  if (%1 != 10) && (%2 != 10) {
+    if (%1 == %2) {
+      if (%1 isnum 7-9 || %2 == 11) { %t } | %f
+    } | %f
+  } | %f
+}
+/*
+Double Rule:
+Bank> 2 3 4 5 6 7 8 9 T A
+9     - x x x x - - - - - 
+10    x x x x x x x x - - 
+11    x x x x x x x x x - 
+*/
+alias double {
+  ;syntax
+  ; $double(<card 1> <card 2> [open bankcard])
+  !tokenize 44 $1-
+  !tokenize 32 $1-
+  !var %f = !return $false,%t = !return $true
+  !var %1 = $worth($1),%2 = $worth($2),%3 = $worth($iif($3,$3,H-2))
+  !var %c = %1 + %2
+  if (%c < 12) {
+    if (%3 < 3) && (%c isnum 10-11) { %t }
+    elseif (%3 < 4) && (%c isnum 9-11) { %t }
+    elseif (%3 < 5) && (%c isnum 9-11) { %t }
+    elseif (%3 < 6) && (%c isnum 9-11) { %t }
+    elseif (%3 < 7) && (%c isnum 9-11) { %t }
+    elseif (%3 < 8) && (%c isnum 10-11) { %t }
+    elseif (%3 < 9) && (%c isnum 10-11) { %t }
+    elseif (%3 < 10) && (%c isnum 10-11) { %t }
+    elseif (%3 < 11) && (%c == 11) { %t }
+    %f
+  } | %f
+}
+
+alias hard-hand {
+  ;syntax
+  ; $hard-hand(<cards (tokenized by , or space)>)
+  !tokenize 44 $1-
+  !tokenize 32 $1-
+  !var %f = !return $false,%t = !return $true
+  !var %cards = $1-,%worth,%c,%a
+  while (%cards) {
+    %c = $gettok($v1,1,32)
+    !inc %worth $worth(%c)
+    if ($worth(%c) == 11) { %a = 1 }
+    %cards = $deltok(%cards,1,32)
+  }
+  if (%worth isnum 22-31) && (%a) { %t }
+  elseif (%worth < 22) && (!%a) { %t } | %f
+}
+alias soft-hand {
+  ;syntax
+  ; $soft-hand(<cards (tokenized by , or space)>)
+  !tokenize 44 $1-
+  !tokenize 32 $1-
+  !var %f = !return $false,%t = !return $true
+  !var %cards = $1-,%worth,%c,%a = 0
+  while (%cards) {
+    %c = $gettok($v1,1,32)
+    !inc %worth $worth(%c)
+    if ($worth(%c) == 11) { %a = 1 }
+    %cards = $deltok(%cards,1,32)
+  }
+  if (%worth < 22) && (%a) { %t } | %f
+}
+alias blackjack {
+  ;syntax
+  ; $blackjack(<cards>)
+  !tokenize 44 $1-
+  !tokenize 32 $1-
+  !var %f = !return $false,%t = !return $true
+  !var %cards = $1-,%c
+  %c = $worth($1) + $worth($2)
+  if (%c == 21) && ($0 == 2) { %t } | %f
+}
+alias cardpoints {
+  ;syntax
+  ; $cardpoints(<cards>)
+  ; $cardpoints(<cards>).all
+  !tokenize 44 $1-
+  !tokenize 32 $1-
+  !var %cards = $1-,%w,%a = 0,%c,%r = !return
+  while (%cards) {
+    %c = $worth($gettok($v1,1,32))
+    if (%c) { !inc %w $v1 }
+    if (%c == 11) { !inc %a }
+    %cards = $deltok(%cards,1,32)
+  }
+  if (%w) {
+    if ($prop == all) { %r %w }
+    if (!$soft-hand($1-)) { while (%w > 21) && (%a) { dec %w 10 | dec %a } } 
+    %r %w
+  }
+}

@@ -1,0 +1,27 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; $replaceall & $replaceallcs by tybalt
+; $replaceall replaces all tokens, matching your input, with your specified output. Kind of like $replace
+; Syntax:
+;	$replaceall(string,<token to replace>,<replacement for token>,<C>)[.wm]
+;	.wm returns a wildmatch
+; Examples:
+; 	$replaceall(me am testing the identifier me made,me,I,32) returns: I am testing the identifier I made
+;	Opposing example: $replaceall(me am testing the identifier me! made,me,I,32) would only replace the first me
+;	But you can use: $replaceall(me am testing the identifier me! made,me,I,32).wm would replace both of them. 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+alias replaceall { 
+  if ($1-4) { var %t = $1, %e = $2, %u = $3, %c = $4 }
+  while ($($+($,findtok,(%t,$iif($prop = wm,$wildtok(%t,$+(*,%e,*),1,32),%e),%c)),2)) { var %t = $puttok(%t,%u,$ifmatch,%c) }
+  return %t
+}
+
+; $replaceallcs is pretty much the same thing as above with the same syntax but just returns the case-sensitive version
+; For example: $replaceallcs(me am testing the identifier me made,ME,I,32)[.wm] wouldn't filter out the me's because they are a different case.
+; However: $replaceallcs(me am testing the identifier me made,me,I,32)[.wm] would work because the two me's are the same case.
+
+alias replaceallcs { 
+  if ($1-4) { var %t = $1, %e = $2, %u = $3, %c = $4 }
+  while ($($+($,findtokcs,(%t,$iif($prop = wm,$wildtok(%t,$+(*,%e,*),1,32),%e),%c)),2)) { var %t = $puttok(%t,%u,$ifmatch,%c) }
+  return %t
+}

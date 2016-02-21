@@ -1,0 +1,37 @@
+;myndzi 07/23/2007
+
+;$sm_delay
+;specifies the number of milliseconds to wait
+;between messages.
+alias sm_delay return 2500
+
+;/slowmsg <nick> <text>
+;call it with /.slowmsg if you want it to send the
+;messages silently
+alias slowmsg {
+  var %w = @sm. $+ $cid, %first = 0
+  if (!$window(%w)) {
+    window -hnl %w
+    %first = 1
+  }
+  aline %w $show $1-
+  $iif($show, sm_continue, .sm_continue) %first
+}
+
+;/sm_continue [first]
+;if [first] is true, it will send the first line immediately,
+;else it will just start the timer (if it is not started)
+alias -l sm_continue {
+  var %w = @sm. $+ $cid
+  if (!$line(%w, 0)) .timer $+ %w off
+  else {
+    if (!$timer(%w)) {
+      .timer $+ %w -m 0 $sm_delay if ($isalias(sm_continue)) sm_continue 1 $chr(124) else .timer $+ %w off
+    }
+    if ($1) {
+      tokenize 32 $line(%w, 1)
+      dline %w 1
+      $iif($1, msg, .msg) $2 $$3-
+    }
+  }
+}

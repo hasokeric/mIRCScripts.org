@@ -1,0 +1,48 @@
+; Knight Online Server Status Checker
+; By SCouNDReL
+; work with /knight command
+; www.mIRCdb.Com
+
+alias knight { unset %q | %sjn.install = 1 | close -@ @knight | sockclose knight* | kowin | sockopen $+(knight,$ticks) www.knightempire.com 80 }
+on *:SockOpen:knight*:{
+  var %a sockwrite -n $sockname
+  if ($sockerr) { drawrect -fr @knight $rgb(182,114,51) 1 31 $calc($calc(24*20) +1) 100 100 | drawtext -r @knight 1 Tahoma 15 30 $calc(24 * 20) Error! }  
+  %a GET /server/stats.php HTTP/1.1
+  %a host: www.knightempire.com
+  %a $crlf
+}
+on *:Sockread:knight*:{
+  var %a
+  sockread %a
+  if (<td align="left" witdh="200"> isin %a) && (<b> !isin %a) { inc %q }
+  if (%q == 2) { inc %sjn.install | writetowin %sjn1 ¿ $remove(%a,<td align="left" witdh="200"><font color="#FF0000"><i>,</i>,</font>,</td>) | unset %sjn1 | unset %q }  
+  elseif (%q == 1) { %sjn1 = $remove(%a,<td align="left" witdh="200"><font color="#FF0000"><i>,</i>,</font>,</td>) }
+  if (%a == </html>) && ($window(@knight)) { drawrect -fr @knight $rgb(182,114,51) 1 31 $calc($calc(24*20) +1) 100 100 | drawtext -r @knight 1 Tahoma 15 30 $calc(24 * 20) Done }
+}
+alias kowin {
+  window -pxk[1] @knight  
+  drawrect -fr @knight $rgb(182,114,51) 99999 1 1 99999 99999  
+  drawrect -fr @knight $rgb(231,209,162) 361 10 20 360 460
+  drawrect -fr @knight 1 1 10 20 1 460
+  drawrect -fr @knight 1 1 370 20 1 460  
+  drawrect -fr @knight 1 1 200 20 1 460    
+  var %i 1
+  while %i <= 24 {
+    drawrect -fr @knight 1 1 10 $calc(%i * 20) 360 1
+    inc %i
+  }
+  drawtext -r @knight 1 Tahoma 15 30 $calc(24 * 20) Loading...
+  drawtext -ro @knight 1 Tahoma 15 30 20 Server Name
+  drawtext -ro @knight 1 Tahoma 15 260 20 Status
+}
+alias writetowin {
+  if ($window(@knight)) {   
+    drawtext -r @knight 1 Tahoma 15 25 $calc(%sjn.install * 20) $gettok($1-,1,191) 
+    drawtext -r @knight 1 Tahoma 15 260 $calc(%sjn.install * 20) $gettok($1-,2,191)     
+  }
+}
+menu @knight {
+  Refresh:knight
+  -
+  Close:close -@ @knight
+}

@@ -1,0 +1,178 @@
+; DNSMX
+; A system for performing DNS lookup of MX records
+; By Sarten-X
+; This alias uses the services provided by www.securitytoolsonline.com to find
+; the mail exchange for a domain. Please note that they have provided this 
+; service free of cost, for now. Don't overload their servers, and keep it open
+; for us all to use!
+;
+; Also included is /MXSockOpen, a drop-in replacement for the normal /sockopen
+; command, that opens a socket to the mail exchange for a given address, rather
+; than to the address itself. /MXSockOpen takes the same parameters as the
+; /sockopen command.
+;
+; To use:
+; 1. Call $DNSMX(name, target, previous)
+;    * name is the name of your script, used for identifying sockets and
+;      signal callbacks.
+;    * target is the host you want to find the mail exchange for. 
+;    * previous is optional, and specifies the server you last tried.
+;
+; 2. Check the returned value. If DNSMX has cached responses, it will return a
+;    server address (go to step 4). If DNSMX does not have any cached responses,
+;    it will return $null.
+;
+; 3. Wait for a signal. When DNSMX has finished performing its lookup, it will
+;    send a signal, with the name "DNSMXComplete" (without quotes). The only 
+;    parameter will be the script name as given in the original function call.
+;    When the signal is sent, it indicates that DNSMX has filled its cache with
+;    all available MX records for the target.
+;
+; 4. Retrieve the most-likely exchange from DNSMX. To get just the most-likely
+;    exchange, simply call $DNSMX again as in step 1. This time, it will return
+;    a server address.
+;
+; 5. Attempt to connect to the exchange. If it succeeds, DNSMX has done its job.
+;    If it fails, move on to step 6.
+;
+; 6. Get the backup server. DNSMX caches all the results from its query, not 
+;    just the most likely one. To access the lower-priority results, call the
+;    DNSMX function again, including the last result returned from DNSMX as the
+;    last parameter. DNSMX will find that server in the list, and return the
+;    next exchange. Repeat from step 5.
+;
+;
+; Known bugs/future work:
+;
+; At the present time, if the script requests a backup MX when there isn't one,
+; or if all exchanges are unavailable, or for any other reason DNSMX reaches
+; the end of its list, DNSMX will refresh its list of exchanges. Given a
+; poorly-constructed script calling DNSMX, it is possible to enter a loop where
+; DNSMX will continually try to refresh. This may be seen as a bug by some, a
+; feature by others. Either way, it is easily avoided by proper handling of the
+; returned $null values. If DNSMX returns a $null when it has already returned
+; an exchange, the connection should be given up as a failure.
+;
+; DNSMX needs sanity checks to protect against corruption of the hash tables by
+; other scripts.
+;
+; DNSMX needs to have its methods optimized for better speed.
+;
+; DNSMX cannot handle DNS aliases correctly.
+;
+; There may be responses from www.securitytoolsonline.com that I haven't seen,
+; so DNSMX obviously won't read them correctly.
+;
+; DNSMX needs to have support for records expiring from cache.
+
+; *** Begin DNSMX
+
+alias DNSMX {
+  if ($hget(MX, $2) != $null) {
+    var %appname = $1, %target = $2, %oldserver = $3
+    tokenize 58 $hget(MX, %target)
+    var %% = 1, %capturing = $iif(%oldserver == $null,$true,$false)
+    while (%% <= $0 && %capturing == $false) {
+      var %record = $eval($+($,%%),2)
+      if ($gettok(%record, 2, 32) == %oldserver) { var %capturing = $true }
+      inc %%
+    }
+    var %retval = $gettok($eval($+($,%%),2), 2, 32)
+    if (%retval == $null) {
+      sockopen $+(DNSMX,%appname) www.securitytoolsonline.com 80
+      sockmark $+(DNSMX,%appname) %target
+    }
+    return %retval
+  }
+  else {
+    sockopen $+(DNSMX,$1) www.securitytoolsonline.com 80
+    sockmark $+(DNSMX,$1-)
+    return $null
+  }
+}
+
+on *:sockopen:DNSMX*:{
+  if ($sockerr == 0) {
+    var %content = $+(type=MX&op=dnslookup&domain=,$sock($sockname).mark)
+    sockwrite -n $sockname POST /request.php HTTP/1.1
+    sockwrite -n $sockname Host: www.securitytoolsonline.com
+    sockwrite -n $sockname User-Agent: Mozilla/4.0
+    sockwrite -n $sockname Content-Length: $len(%content)
+    sockwrite -n $sockname Content-Type: application/x-www-form-urlencoded
+    sockwrite $sockname $crlf
+    sockwrite -n $sockname %content
+    hadd -m MX $sock($sockname).mark 999999 $sock($sockname).mark
+    sockmark $sockname 0
+  }
+}
+
+on *:sockread:DNSMX*: {
+  var %appname = $mid($sockname,6)
+  sockread -fn &in
+  while ($sockbr > 0) {
+    if ($bfind(&in, 0,<).text > 0 && $sock($sockname).mark == 1) sockmark $sockname 2
+    if ($bfind(&in, 0,<pre>).text > 0) sockmark $sockname 1
+    if ($sock($sockname).mark == 1) {
+      var %dns = $regsubex($bvar(&in, 1, 800).text, /<\w*>/g,)
+      if (mail is handled by isin %dns) {
+        tokenize 32 %dns
+        var %old = $iif($hget(MX, $1) != $null, $+($hget(MX, $1),:), $null)
+        hadd -m MX $1 $sorttok($+(%old,$6 $7), 58)
+      }
+    }
+    if ($sock($sockname).mark == 2) {
+      .signal DNSMXComplete %appname
+      sockclose $sockname 
+      halt
+    }
+    sockread -fn &in
+  }
+}
+
+; *** End DNSMX
+
+
+
+; *** Begin MXSockOpen
+
+alias MXSockOpen {
+  var %switches = $null, %bindip = $null, %address = $null, %port = $null
+  if ($left($1,1) == -) {
+    var %switches = $1
+    tokenize 32 $2-
+    if (d isin %switches) {
+      var %bindip = $1
+      tokenize 32 $2-
+    }
+  }
+  if ($0 == 3) {
+    var %name = $1, %address = $2, %port = $3
+    var %exchange = $DNSMX($+(MXSockOpen.,%name), %address)
+    if (%exchange != $null) {
+      hadd -m MXSockOpen %name %port %address %exchange %switches %bindip
+      sockopen %switches %bindip %name %exchange %port
+    }
+    else { hadd -m MXSockOpen %name %port %address %exchange %switches %bindip }
+  } 
+  else { echo -s MXSockOpen: Insufficient parameters }
+}
+on *:sockopen:*:{
+  if ($hget(MXSockOpen, $sockname) != $null && $sockerr > 0) {
+    tokenize 32 $hget(MXSockOpen, $sockname)
+    var %exchange = $DNSMX($+(MXSockOpen.,$sockname),$2,$3)
+    hadd -m MXSockOpen $sockname $1 %exchange $3 $4 $5
+    sockopen $4 $5 $sockname %exchange $1
+  }   
+}
+
+on *:SIGNAL:DNSMXComplete: {
+  if ($left($1,11) == MXSockOpen.) {
+    var %name = $mid($1,12)
+    tokenize 32 $hget(MXSockOpen, %name)
+    var %exchange = $DNSMX($+(MXSockOpen.,%name),$2)
+    hadd -m MXSockOpen %name $1 %exchange $3 $4 $5
+    sockopen $4 $5 %name %exchange $1
+  }
+}
+
+; *** End MXSockOpen

@@ -1,0 +1,118 @@
+;mIRC Update Checker v3.0 - 2007
+;by Soul_Eater
+;/download alias by ^andy, has been modified.
+;Syntax:
+;/mircupd check 
+;<<--checks version of mIRC.
+;/mircupd list
+;<<--retrieves the list of whats new in mIRC
+;/mircupd get
+;<<--downloads the newest copy of mIRC
+
+alias -l input1 { var %x $input(Your copy of mIRC is up to date!,oi,Status) | sockclose mirc }
+alias -l input2 { 
+  if ($input(The newest version of mIRC is $+(%mu-num,!) Update?,yi,Status)) { sockclose mirc | mircupd get }
+  else { sockclose mirc }
+}
+;on *:start:mircupd check
+alias mircupd {
+  unset %sockread*
+  sockopen mirc www.mirc.co.uk 80
+  set %mu-r $1
+}
+ON *:SOCKOPEN:mirc:{
+  if ($sockerr) {
+    echo -s $sock($sockname).wsmsg
+    return
+  }
+  if (%mu-r == check) { set %mu-x 0 | sockwrite -n $sockname GET /whatsnew.txt HTTP/1.1 }
+  if (%mu-r == list) { set %mu-x 0 | sockwrite -n $sockname GET /whatsnew.txt HTTP/1.1 | window -a @MU-List }
+  if (%mu-r == get) { sockwrite -n $sockname GET /get.html HTTP/1.1 }
+  sockwrite -n $sockname Host: www.mirc.co.uk $+ $str($crlf,2)
+}
+ON *:SOCKREAD:mirc:{
+  if ($sockerr) {
+    sockclose mirc
+    return
+  }
+  sockread %sockread
+  if (%mu-r == list) { 
+    if (%sockread) {
+      if (%mu-x >= 9) {
+        aline @MU-List %sockread
+      }
+      inc %mu-x
+    }
+  }
+  if (%mu-r == check) {
+    if (*full list* iswm %sockread) {
+      if (%mu-num) { sockclose $sockname }
+      set %mu-num $remove($gettok(%sockread,10,32),$chr(58))
+      if ($version == %mu-num) { .timer -m 1 1 input1 }
+      if ($version < %mu-num) { .timer -m 1 1 input2 }
+    }
+  }
+  if (%mu-r == get) {
+    if (*onclick="download();* iswm %sockread) { set %mu-fd $gettok(%sockread,2,34) | set %mu-fn $gettok($gettok(%sockread,2,34),$gettok($gettok(%sockread,2,34),0,47),47) }
+  }
+}
+ON *:SOCKCLOSE:mirc:{
+  if (%mu-r == list) { unset %sockread* %mu-* }
+  if (%mu-r == get) { download %mu-fd } 
+  else { unset %sockread* %mu-* }
+}
+
+alias -l download {
+  if ($sock(dl)) {
+    echo $colour(info text) @download *** already downloading; please wait.
+    return
+  } 
+  sockopen dl $gettok($1,2,47) 80
+}
+on *:sockopen:dl:{
+  if ($sockerr) {
+    echo $colour(info text) @download *** error $sock($sockname).wsmsg when downloading
+    return
+  }
+  write -c %mu-fn
+  unset %downloadlength %downloadready
+  window -c @download
+  sockwrite -n $sockname GET $+(/,$gettok(%mu-fd,3-,47)) HTTP/1.0
+  sockwrite -n $sockname Accept: */*
+  sockwrite -n $sockname Host: $gettok(%mu-fd,2,47) $+ $str($crlf,2)
+  sockwrite -n $sockname
+}
+on *:sockread:dl:{
+  if (%downloadready != 1) {
+    var %header
+    sockread %header
+    while ($sockbr) {
+      if (Content-length: * iswm %header) {
+        %downloadlength = $gettok(%header,2,32)
+        if (* !iswm $window(@download)) window @download
+        echo $colour(info text) @download *** file size: %downloadlength bytes
+      }
+      elseif (* !iswm %header) {
+        %downloadready = 1
+        %downloadoffset = $sock($sockname).rcvd
+        break
+      }
+      sockread %header
+    }
+  }
+  sockread 4096 &d
+  while ($sockbr) {
+    if (* !iswm $window(@download)) window @download
+    echo $colour(info text) @download *** received: $round( $calc(100 * ($sock($sockname).rcvd - %downloadoffset) / %downloadlength) ,1) $+ %
+    bwrite %mu-fn -1 -1 &d
+    sockread 4096 &d
+  }
+}
+on *:sockclose:dl:{
+  echo $colour(info text) @download *** done downloading %mu-fn
+  run %mu-fn
+}
+menu @download {
+  Stop Downloading:sockclose dl | .remove %mu-fn
+  Close Window:window -c @download
+}

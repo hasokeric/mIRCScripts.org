@@ -1,0 +1,198 @@
+;;;;;;;;;;;;;;;;;;;;
+; Color Commands v2 by poiuy_qwert
+;;;;;;;;;;;;;;;;;;;;
+; Version 2:
+;   - Fixed bugs
+;   - Changed L and V values to range from 0-255 for more precision
+;;;;;;;;;;;;;;;;;;;;
+; Note: None of the commands have error checking, use valid parameters.
+; Note 2: These are not precise, but close
+;;;;;;;;;;;;;;;;;;;;
+; $hslv(H,S,L/V) or $hslv(HSLV) - Like $rgb but for HSL and HSV
+;   - If you supply H, S, and L or V, it returns them all calculated to an HSLV value (0-3682560)
+;   - If you supply an HSLV value it will return H,S,L/V
+;
+; $rgbtohsl(R,G,B)[.hslv] or $rgbtohsl(RGB)[.hslv] - Convert RGB to HSL
+;   - Accepts R,G,B or RGB
+;   - If .hslv prop is not supplied it returns H,S,V. If it is it returns $hslv(H,S,V)
+;
+; $rgbtohsv(R,G,B)[.hslv] or $rgbtohsv(RGB)[.hslv] - Convert RGB to HSV
+;   - Same as above but with HSV not HSL
+;
+; $hsltorgb(H,S,L)[.rgb] or $hsltorgb(HSLV)[.rgb] - Convert HSL to RGB
+;   - Accepts H,S,L or HSLV
+;   - If .rgb prop is not supplied it returns R,G,B. If it is it returns $rgb(R,G,B)
+;
+;;;;;;;;;;;;;;;;;;;;
+; Remember:
+;   - R, G, and B are values from 0-255
+;   - H is a value from 0-360
+;   - S is a value from 0-100
+;   - L, and V are all values from 0-255
+;;;;;;;;;;;;;;;;;;;;
+; Examples:
+;   $rgbtohsl(255,0,0)        == 0,100,127
+;   $rgbtohsl(255)            == 0,100,127
+;   $rgbtohsl(255).hslv       == 4666647
+;   $hslv(0,100,127)          == 4666647
+;   $hslv(4666647)            == 0,100,127
+;     Note: Since these are imprecise, 253 is what you get instead of 255
+;   $hsltorgb(0,100,127)      == 253,0,0
+;   $hsltorgb(0,100,127).rgb  == 253
+;   $hsltorgb(4666647).rgb    == 253
+;   $rgbtohsv(9,255,199)      == 166,96,255
+;   $rgbtohsv(13106953)       == 166,96,255
+;   $rgbtohsv(13106953).hslv  == 9332377
+;   $hslv(166,96,255)         == 9332377
+;   $hslv(9332377)            == 166,96,100
+;   $hsvtorgb(166,96,255)     == 10,255,197
+;   $hsvtorgb(166,96,255).rgb == 12975882
+;   $hsvtorgb(9332377).rgb    == 12975882
+;   There is also an example script at the bottom of the script.
+;;;;;;;;;;;;;;;;;;;;
+; Contact:
+;   - Reply where downloaded
+;   - /server -m irc.gamesurge.net -j #eval,#EIRCD
+;;;;;;;;;;;;;;;;;;;;
+alias hslv {
+  if ($3 != $!) return $calc($1 +$2 *361+$3 *36461)
+  else return $replace($or($calc(($1 % 36461) % 361)) $or($calc(($1 % 36461)/361)) $or($calc($1 /36461)),$chr(32),$chr(44))
+}
+alias rgbtohsl {
+  var %hslv 0
+  if ($prop == hslv) var %hslv 1
+  if ($3 == $!) tokenize 44 $rgb($1)
+  var %r $1 / 255,%g $2 / 255,%b $3 / 255,%max = $max(%r,%g,%b),%min = $min(%r,%g,%b),%h,%s,%l
+  if (%min == %max) var %h 0.0,%s 0.0,%l = %r
+  else {
+    %l = $calc(%min +%max) / 2
+    if (%l < 0.5) %s = $calc((%max -%min)/(%max +%min))
+    else %s = $calc((%max -%min)/(2-%max -%min))
+    if (%r == %max) %h = $calc((%g -%b)/(%max -%min))
+    elseif (%g == %max) %h = $calc(2+(%b -%r)/(%max -%min))
+    else %h = $calc(4+(%r -%g)/(%max -%min))
+    %h = %h / 6
+    if (%h < 0) inc %h
+  }
+  %r = $replace($or($calc(360*%h)) $or($calc(100*%s)) $or($calc(255*%l)),$chr(32),$chr(44))
+  if (%hslv) return $hslv( [ %r ] )
+  else return %r
+}
+alias rgbtohsv {
+  var %hslv 0
+  if ($prop == hslv) var %hslv 1
+  if ($3 == $!) tokenize 44 $rgb($1)
+  var %r $1 / 255,%g $2 / 255,%b $3 / 255,%max = $max(%r,%g,%b),%min = $min(%r,%g,%b),%h,%s,%v = %max
+  if (!%max) %s = 0
+  else %s = $calc((%max -%min)/%max)
+  if (!%s) %h = 0
+  else {
+    if (%r == %max) %h = $calc((%g -%b)/(%max -%min))
+    elseif (%g == %max) %h = $calc(2+(%b -%r)/(%max -%min))
+    else %h = $calc(4+(%r -%g)/(%max -%min))
+    %h = %h / 6
+    if (%h < 0) inc %h
+  }
+  %r = $replace($or($calc(360*%h)) $or($calc(100*%s)) $or($calc(255*%v)),$chr(32),$chr(44))
+  if (%hslv) return $hslv( [ %r ] )
+  else return %r
+}
+alias hslconv {
+  if ($1 < $calc(1/6)) return $calc(($3 -$2)*6*$1 +$2)
+  if ($1 < 0.5) return $3
+  if ($1 < $calc(2/3)) return $calc(($3 -$2)*((2/3)-$1)*6 +$2)
+  return $2
+}
+alias hsltorgb {
+  var %rgb 0
+  if ($prop == rgb) var %rgb 1
+  if ($3 == $!) tokenize 44 $hslv($1)
+  var %h $1 / 360,%s $2 / 100,%l $3 / 255,%r,%g,%b
+  if (!%s) var %r = %l,%g = %l,%b = %l
+  else {
+    var %t2
+    if (%l < 0.5) %t2 = $calc((1+%s)*%l)
+    else %t2 = $calc((%l +%s)-(%l *%s))
+    var %t1 = $calc(2*%l -%t2),%r = $calc(1/3+%h)
+    if (%r > 1) dec %r
+    var %g = %h,%b = $calc(%h -1/3)
+    if (%b < 0) inc %b
+    var %r = $hslconv(%r,%t1,%t2),%g = $hslconv(%g,%t1,%t2),%b = $hslconv(%b,%t1,%t2)
+  }
+  %r = $replace($or($calc(255*%r)) $or($calc(255*%g)) $or($calc(255*%b)),$chr(32),$chr(44))
+  if (%rgb) return $rgb( [ %r ] )
+  else return %r
+}
+
+alias hsvtorgb {
+  var %rgb 0
+  if ($prop == rgb) var %rgb 1
+  if ($3 == $!) tokenize 44 $hslv($1)
+  var %h $1 / 60,%s $2 / 100,%v $3 / 255,%r,%g,%b
+  if (!%s) var %r = %v,%g = %v,%b = %v
+  else {
+    var %i = $or(%h),%f = %h - %i,%p = $calc((1-%s)*%v),%q = $calc((1-%s *%f)*%v),%t = $calc((1-(1-%f)*%s)*%v)
+    if (!%i) var %r = %v,%g = %t,%b = %p
+    elseif (%i == 1) var %r = %q,%g = %v,%b = %p
+    elseif (%i == 2) var %r = %p,%g = %v,%b = %t
+    elseif (%i == 3) var %r = %p,%g = %q,%b = %v
+    elseif (%i == 4) var %r = %t,%g = %p,%b = %v
+    elseif (%i == 5) var %r = %v,%g = %p,%b = %q
+  }
+  %r = $replace($or($calc(255*%r)) $or($calc(255*%g)) $or($calc(255*%b)),$chr(32),$chr(44))
+  if (%rgb) return $rgb( [ %r ] )
+  else return %r
+}
+
+;$min and $max by poiuy_qwert
+alias max {
+  tokenize 32 $1-
+  var %a 1,%n $2-,%m $1
+  while ($gettok(%n,%a,32) != $!) {
+    if ($v1 > %m) %m = $v1
+    inc %a
+  }
+  return %m
+}
+alias min {
+  tokenize 32 $1-
+  var %a 1,%n $2-,%m $1
+  while ($gettok(%n,%a,32) != $!) {
+    if ($v1 < %m) %m = $v1
+    inc %a
+  }
+  return %m
+}
+
+;Example: Draws a color matrix (or color pallette) to the @colormatrix window.
+;  Warning: /colormatrix will freeze your mIRC while it draws. Use CTRL+Break to stop the drawing and unfreeze mIRC.
+;           If you dont want it to freeze, use /colormatrixslow, which is slower but doesn't freeze mIRC.
+alias colormatrix {
+  window -Bpdf +t @colormatrix -1 -1 361 256
+  var %l 255,%pl -1,%ph -1
+  while (%l >= 0) {
+    var %h 0
+    while (%h < 361) {
+      drawdot -r @colormatrix 255 1 %h $calc(255-%l)
+      if (%pl %ph != -1 -1) drawdot -r @colormatrix $hsltorgb(%ph,100,%pl).rgb 1 %ph $calc(255-%pl)
+      var %pl = %l,%ph = %h
+      inc %h
+    }
+    dec %l
+  }
+}
+alias colormatrixslow {
+  if (!$window(@colormatrix)) {
+    if ($1 == $!) {
+      window -Bpdf +t @colormatrix -1 -1 361 256
+      tokenize 32 0 255 -1 -1
+    }
+    else return
+  }
+  if ($window(@colormatrix)) && ($4) {
+    drawdot -r @colormatrix 255 1 $1 $calc(255-$2)
+    if ($3-4 != -1 -1) drawdot -r @colormatrix $hsltorgb($3,100,$4).rgb 1 $3 $calc(255-$4)
+    if ($1 < 360) .timercolormatrix -h 1 0 colormatrixslow $calc(1+$1) $2 $1-2
+    elseif ($2 > 0) .timercolormatrix -h 1 0 colormatrixslow 0 $calc($2 -1) $1-2
+  }
+}

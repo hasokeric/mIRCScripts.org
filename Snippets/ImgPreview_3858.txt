@@ -1,0 +1,233 @@
+;Every now and then people paste image urls for us, lazy people, to open.
+;Being lazy, I want to know if the image I'm about to open is actually worth looking at.
+;(Or there's always the chance it's one of those horrifying images - they're less horrifying at 128x128)
+;Load and enjoy. :)
+;"Hidden" function - double clicking the preview window closes it. :)
+;If you just copy-and paste the code - be sure to go to the menu, and choose "Reset".
+;Note: Redirected URLs (i.e. - tinyurl, cjb.net, etc) will not work - analyzing them would take longer then actually opening the images.
+;TODO: Add support for Chunk-Transfer type (for when websites send an image data without knowing it's size, i.e. http://www.speedtest.net/result/175206112.png)
+;Thanks to linx05, Jigsy, and rfu for constant feedback.
+
+on ^*:hotlink:*:*:{
+  if ($regex($1,/^(http:\x2F\x2F)?(?(1)(?:www\.)?|www\.).+?\x2F(?:.+\x2F)?.+\.(?:jp(?:e)?g|gif|png|bmp)$/i) && %imgready == $true) {
+    if ((%imgclick == $true && $mouse.key & 1) || %imgclick == $false) {
+      if (%imgpre && $exists(imgcache\ $+ $gettok($regsubex($1,/^(?:.+?\w)\x2F/,),-1,47))) {
+        if ($window(@ImagePreview)) window -c @ImagePreview
+        window -pdBk0w0o +b @ImagePreview $mouse.mx $mouse.my %imgsize %imgsize
+        if (%imgfade) .timertrans -m 64 1 setlayer $!calc(255 - $!timer(trans).reps * 4) @ImagePreview
+        drawpic -s @ImagePreview 0 0 %imgsize %imgsize imgcache\ $+ $gettok($regsubex($1,/^(?:.+?\w)\x2F/,),-1,47)
+        .timerclosepreview 1 %imgfadeout fimgClose
+      }
+      else {
+        set %imgloc $1
+        set %imgready $false
+        set %img.x $mouse.mx
+        set %img.y $mouse.my
+        fetchimg $remove($regsubex(%imgloc,/(\w\x2F).++/,\1),http:,/)
+      }
+    }
+    return
+  }
+  halt
+}
+alias -l fetchimg {
+  if (!$sock(fimg)) {
+    .sockopen fimg $1 80
+    if ($window(@ImagePreview)) window -c @ImagePreview
+    if (!$isid) {
+      window -pdBk0w0o +b @ImagePreview %img.x %img.y %imgsize %imgsize
+      var %t = Downloading...
+      drawtext -or @ImagePreview 0 Tahoma 9 $calc(%imgsize / 2 - $width(%t,Tahoma,9,1) / 2) $calc(%imgsize / 2 - $height(%t,Tahoma,9)) %t
+      if (%imgfade) .timertrans -m 64 1 setlayer $!calc(255 - $!timer(trans).reps * 4) @ImagePreview
+    }
+  }
+}
+on *:sockopen:fimg:{
+  if (!$sockerr) {
+    var %x = $regsubex(%imgloc,/^(?:.+?\w)\x2F/,), %a sockwrite -n $sockname
+    set %img.file $gettok(%x,-1,47)
+    write -c %img.file
+    %a GET / $+ %x HTTP/1.1
+    %a Host: $remove($regsubex(%imgloc,/(\w\x2F).++/,\1),http:,/)
+    %a Accept: */*
+    %a Connection: Close-connection
+    %a
+  }
+  else { 
+    echo $color(info) -ae ImagePreview: Error while fetching image.
+    unset %img.*
+    unset %imgloc
+    set %imgready $true
+    window -c @ImagePreview
+    .timertrans off
+  }
+}
+on *:sockread:fimg:{
+  if (!%img.header) {
+    var %length
+    sockread %length
+    while ($sockbr) {
+      if (*404*Not Found iswm %length || error isin %length) { 
+        window -c @ImagePreview
+        sockclose $sockname
+        .remove %img.file
+        .timertrans off
+        echo $color(info) -ae ImagePreview: Could not find image %imgloc (server returned 404).
+        .unset %img.*
+        .unset %imgloc
+        drawpic -c
+        set %imgready $true
+        break
+      }
+      elseif (*Transfer-Encoding: chunked* iswm %length) {
+        window -c @ImagePreview
+        sockclose $sockname
+        .remove %img.file
+        .timertrans off
+        echo $color(info) -ae ImagePreview: Transfer type is currently not supported (chunked).
+        .unset %img.*
+        .unset %imgloc
+        drawpic -c
+        set %imgready $true
+        break
+      }
+      elseif (!%length) {
+        set %img.header $true
+        break
+      }
+      sockread %length
+    }
+  }
+  else {
+    sockread 8192 &image
+    while ($sockbr) {
+      bwrite %img.file -1 -1 &image
+      if (!%img.pre) {
+        if ($istok(.jpg jpeg .bmp,$right(%img.file,4),32) == $true && $pic(%img.file).size != 0) .drawpic -s @ImagePreview 0 0 %imgsize %imgsize %img.file
+        else {
+          inc %img.dots
+          clear @ImagePreview
+          var %t = $+(Loading,$str(.,$calc(%img.dots % 3 + 1)))
+          drawtext -or @ImagePreview 0 Tahoma 9 $calc(%imgsize / 2 - $width(%t,Tahoma,9,1) / 2) $calc(%imgsize / 2 - $height(%t,Tahoma,9)) %t
+        }
+      }
+      sockread 8192 &image
+    }
+  }
+}
+on *:sockclose:fimg:{
+  if ($exists(%img.file)) {
+    if (!%img.pre && $window(@ImagePreview)) { .drawpic -s @ImagePreview 0 0 %imgsize %imgsize %img.file }
+    if (%imgpre) .copy -o %img.file imgcache\ $+ %img.file
+    .remove %img.file
+    .unset %img.*
+    .timertrans off
+  }
+  else echo $color(info) -ae ImagePreview: Error while fetching image.
+  .timerclosepreview 1 %imgfadeout fimgClose
+  drawpic -c
+  set %imgready $true
+}
+
+alias -l fimgClose {
+  if (%imgfade) .timertransclose -m 64 1 setlayer $!calc($timer(transclose).reps * 4) @ImagePreview $(|) $!iif($timer(transclose).reps < 1,window -c @ImagePreview)
+  else window -c @ImagePreview
+}
+on *:close:@ImagePreview:imgclosepre
+alias -l imgclosepre {
+  if ($exists(%img.file) == $true) {
+    if (%imgpre && %imgready == $true) .copy -o %img.file imgcache\ $+ %img.file
+    .remove %img.file
+  }
+  .timertrans off
+  .timerclosepreview off
+  .unset %img.*
+  .unset %imgloc
+  drawpic -c
+  sockclose fimg
+  set %imgready $true
+}
+menu @ImagePreview {
+  dclick:window -c @ImagePreview | imgclosepre
+  Open in browser:run %imgloc
+  Close:window -c @ImagePreview | imgclosepre
+}
+menu status,channel,query {
+  Image Preview
+  .Turn $iif(%imgready,Off,On):set %imgready $iif(%imgready,$false,$true)
+  . $iif(!%imgready,$style(2),$iif(%imgfade,$style(1))) Fade in\out:set %imgfade $iif(%imgfade,$false,$true)
+  . $iif(!%imgready,$style(2),$iif(%imgpre,$style(1))) Prefetch images:{
+    set %imgpre $iif(%imgpre,$false,$true)
+    if ($exists(imgcache\) == $false) .mkdir imgcache
+  }
+  . $iif(!%imgready || !%imgpre || !$findfile(imgcache\,*.*,0),$style(2)) Clear cache:{
+    var %i 1
+    while ($findfile(imgcache\,*.*,%i)) {
+      .remove $ifmatch
+      inc %i
+    }
+    echo $color(info) -ae * ImagePreview: Cache cleared.
+  }
+  . $iif(!%imgready,$style(2),$iif(%imgclick,$style(1))) Click to preview:set %imgclick $iif(%imgclick,$false,$true)
+  . $iif(!%imgready,$style(2),$iif(%imgactive,$style(1))) Close on focus-loss:set %imgactive $iif(%imgactive,$false,$true)
+  . $iif(!%imgready,$style(2)) Image size...:if ($$?="Enter picture size (in pixels)" isnum) set %imgsize $v1
+  . $iif(!%imgready,$style(2)) $iif(%imgfade,Fadeout,Auto-close) time...:if ($$?=" $+ $+(Enter fadeout start time (in seconds),$chr(58),$crlf,$chr(40),-1 for infinity,$chr(41)) $+ " isnum) set %imgfadeout $iif($v1 == -1,31536000,$v1)
+  .Reset:{
+    unset %img*
+    set %imgready $true
+    set %imgfade $true
+    set %imgpre $false
+    set %imgclick $true
+    set %imgsize 128
+    set %imgfadeout 3
+    set %imgactive $false
+  }
+}
+on *:text:*:*:{
+  if (%imgpre && $regex($1-,/^((http:\x2F\x2F)?(?(2)(?:www\.)?|www\.).+?\x2F(?:.+\x2F)?.+\.(?:jp(?:e)?g|gif|png|bmp))$/i)) {
+    set %imgloc $regml(1)
+    set %imgready $false
+    set %img.x $mouse.mx
+    set %img.y $mouse.my
+    set %img.pre $true
+    $fetchimg($remove($regsubex(%imgloc,/(\w\x2F).++/,\1),http:,/))
+  }
+}
+on *:load:{
+  .mkdir imgcache
+  set %imgready $true
+  set %imgfade $true
+  set %imgpre $false
+  set %imgclick $true
+  set %imgsize 128
+  set %imgfadeout 3
+  set %imgactive $false
+  echo $color(info) -ae * ImagePreview: Fully loaded. Enjoy. (By HydroIT, aka ^Vampire^, aka [FtUC]Hydro)
+}
+on *:unload:{
+  echo $color(info2) -ae * ImagePreview: So long!
+  .window -c @ImagePreview
+  unset %img*
+  var %i 1
+  while ($findfile(imgcache\,*.*,%i)) {
+    .remove $ifmatch
+    inc %i
+  }
+  .rmdir imgcache
+}
+on *:active:*:{
+  if ($lactive == @ImagePreview && !$timer(trans) && $active != $null && $appactive == $true && %imgactive == $true) {
+    fimgClose
+    sockclose fimg
+    if ($exists(%img.file) == $true) {
+      if (%imgpre && %imgready == $true) .copy -o %img.file imgcache\ $+ %img.file
+      .remove %img.file
+    }
+    .timertrans off
+    .timerclosepreview off
+    .unset %img.*
+    .unset %imgloc
+    drawpic -c
+    set %imgready $true
+  }
+}

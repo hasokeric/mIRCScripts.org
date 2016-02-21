@@ -1,0 +1,68 @@
+Sat Oct 13 14:13:15 2007;-----------------------------------------------
+;
+;Name: $iconindex
+;Author: zonIRC
+;Email: zonirc@email.com
+;Testing with: mIRC 6.21
+
+;Updated
+
+; Sat Oct 13 14:13:15 2007
+;----------------------------
+
+;1) Now the @iconindex picture window will be closed after script finishing
+;   by using a /timericonindex(so theres no need to write it at two different
+;   line)
+;   - thanks to KIA
+;2) Now return nothing and echoing an error message when the specified N are
+;   greater than total icon.
+;   - thanks to KIA again :)
+;3) Added validation checked for icon file(.ico) since it will make the loop being
+;   infinite.
+;4) Added 2 more error messages that validate the N parameter.
+
+
+;Description
+;To get the total icon listed on specified file or specified index icon are existed
+
+;Syntax
+;$iconindex(filename[, N])
+;filename: the filename
+;N: the index number where its started with 0(zero)
+;   since the the icon index started with that.
+;   This is optional parameter, when not specified return total index.
+
+;example:
+;$iconindex($mircexe) return 26 since theres was 26 icon listed on mirc 6.21
+;$iconindex($mircexe,0) return 1 since index 0 was the 1st icon.
+
+;Credit
+;KIA from mircscripts.org because found the bugs.
+;
+;-----------------------------------------------
+
+alias iconindex {
+  var %echo = echo -ftsc info * $!iconindex:
+  if (!$isid) $replacex(%echo,$,/) no such command, please use as an identifier.
+  elseif (!$isfile($1)) %echo $iif($1,invalid file - $1,insufficient parameter)
+  elseif (*.ico iswm $1) %echo icon file(*.ico) not supported - $1
+  elseif ($2) && ($2 !isnum) %echo invalid N parameter(must be specified as a number) - $2
+  elseif ($2) && ($2 < 0) %echo invalid N parameter(must be greater than 0/zero) - $2
+  else {  
+    var %loop = $iif($2 isnum,$2,0), %endloop = $iif($2 isnum,$2,$+(%,loop))
+    window -hp @iconindex 
+    .timericonindex 1 0 window -c @iconindex
+    while (%loop <= $(%endloop,2)) {
+      drawpic -no @iconindex 0 0 %loop $qt($1)
+      inc %loop
+    }
+    return %loop
+  }
+  :error {
+    if (*drawpic: * iswm $error) { 
+      reseterror 
+      if (%endloop !isnum) return %loop
+      else %echo invalid N parameter(there's no icon being indexed with this number) - $2
+    }
+  }
+}

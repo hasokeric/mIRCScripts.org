@@ -1,0 +1,196 @@
+; --------------------------------------
+; #### Ascii List v2.0 - by Flobse ####
+; --------------------------------------
+;
+; ##### Description ####
+; Thats a new Ascii list (not based on v1.1) which is optimized for scripters.
+; It's smaller, faster and more effective than v1.1
+;
+; It use a @Window to show all Asciis (0-255) with his Hexadecimal, Octagonal and Char equivalent.
+; You can use the mouse-menu to copy that or just press the shortcut-keys (look @ menu)
+; Colors and Autoclose can u disable / enable in the menu too.
+; It's very good to script with it, you can also bind it to start it faster ( alias F10 { ascii } )
+; Then just press F10, select the line you wish and press just C - Asciilist is closed and the Ascii in your CB.
+;
+; Another "feature" is to search something in this list.
+; Just type what u search and it try to find it.
+; Note: Use the shown counts of numbers to find something specific.
+; Example: 35 will find the Hex 35 - thats Ascii 0053
+; If you wanna find Ascii's you have to give 4 numbers.
+; Same for Hex (2 numbers) and Oct (3 numbers)
+; All other things are Chars.
+;
+; You can also use some parts of this Asciilist in your scripts.
+;
+; Note: You can change the colors in mirc-colors setup (Alt+K)
+; It use the "Normal Text" and "Gray Text" colors.
+; Or change it in the script code.
+;
+; Have fun ;)
+; --------------------------------------
+;
+; ##### Syntax ##### [] = optional, | = or, <> = not optional
+; Asciilist Syntax: /ascii [searchstring]
+; Open the List and scroll to the result of search
+;
+; $ascii Identifier Syntax: $ascii(<searchstring>) [.asc|.chr|.char|.hex|.oct]
+; Returns the first result. (Char-results (Ascii 0-32,127,160) return as Text)
+;
+; $ascTo Identifier Syntax: $ascTo(<0-255>) [.chr|.hex|.oct|.char]
+; Converts the Asciivalue.
+; --------------------------------------
+;
+; ##### Examples #####
+; To use the Ascii list:
+; /ascii or /ascii seperator or /ascii 0035 etc.
+;
+; Use $ascii as Multi-$chr-$asc:
+; Syntax: $ascii(<Chars|Asciis seperated by space>) <.chr|.asc>
+; //echo -a $ascii(Hello).asc == 72 101 108 108 111
+; //echo -a $ascii(72 101 108 108 111).chr == Hello
+;
+; Use $ascii as searchengine for Ascii, Hex, Oct and Chars:
+; Syntax: $ascii(<searchstring>) [.hex|.oct|.chr|.char] (Defaultresult: Ascii)
+; //echo -a $ascii(Seperator) == 0028 (no property return the Asciicode from result)
+; //echo -a $ascii(Seperator).hex == 1C (return the Hex-code)
+; //echo -a $ascii(0035).oct == 043 (return the Oct-code from #)
+; //echo -a $ascii(0035).chr == # (same as $chr(N))
+; //echo -a $ascii(mission).char == Transmissionend (return the Char of result via $ascTo)
+;
+; Use $ascTo to convert Ascii into Hex, Oct or Char (0-32,127 and 160 return as Text)
+; Syntax: $ascTo(<0-255>) [.hex|.oct|.chr|.char] (Defaultresult: Ascii)
+; //echo -a $ascTo(35) == 0035 (return in Asciiformat)
+; //echo -a $ascTo(35).hex == 23 (# in Hex)
+; //echo -a $ascTo(35).oct == 043 (# in Oct)
+; //echo -a $ascTo(35).chr == # (same as $chr(N))
+; //echo -a $ascTo(18).char == Cancel (Return Char as Text)
+;
+; --------------------------------------
+; ## #Flobse @ Quakenet - Scripter@Flobse.de - UIN: 152759920 ##
+
+
+
+;alias F10 { ascii }
+
+;menu Channel, Query, Nicklist, Status {
+;  Ascii List : ascii
+;}
+
+alias ascii { 
+  if ($isid) {
+    if ($prop == asc) { var %x 1 | while ($mid($1-,%x,1)) { var %r = %r $asc($v1) | inc %x } | return %r }
+    elseif ($prop == chr) { var %x 1 | while ($gettok($1-,%x,32)) { var %r = %r $+ $replace($chr($v1),$chr(32),$chr(160)) | inc %x } | return %r }
+    else { return $($ $+ ascii.search($1-). $+ $iif($istok(.hex.oct.char.chr,$prop,46),$prop,ascii),2) }
+  } 
+  if ($window(@ascii)) { window -c @ascii }
+  window -adzlk0 @Ascii $iif($hget($ascii.hash,@Ascii),$v1,-1 -1 380 380) Cambria 16
+  aline @ascii $str($chr(160),3) ASCII $str($chr(160),6) HEX $str($chr(160),6) OCT $str($chr(160),6) CHAR 
+  aline @ascii $str($chr(160),3) $str(-,8) $str($chr(160),5) $str(-,6) $str($chr(160),6) $str(-,6) $str($chr(160),6) $str(-,25) 
+  var %x 0
+  while (%x <= 255) { 
+    aline @ascii $str($chr(160),3) $ascTo(%x) $str($chr(160),7) $ascTo(%x).hex $str($chr(160),8) $ascTo(%x).oct $str($chr(160),6) $ascTo(%x).char 
+    if (!$hget($ascii.hash,@Ascii.colors)) { cline $iif(2 // %x,$color(gray),$color(normal)) @ascii $calc(%x +3) }
+    inc %x 
+  }
+  aline @ascii $str($chr(160),3) $str(-,50)
+  aline @ascii $str($chr(160),5) $str(-,10) Scripted by Flobse $str(-,9)
+  if (!$hget($ascii.hash,@Ascii.colors)) { cline $color(gray) @ascii 260 }
+  aline @ascii $str($chr(160),3) $str(-,50)
+  ascii.search $1-
+}
+
+alias ascTo {
+  if ($1 isnum 0-255) {
+    if ($prop == hex) { return $base($1,10,16,2) }
+    elseif ($prop == oct) { return $base($base($1,10,8),8,8,3) }
+    elseif ($prop == chr) { return $chr($1) }
+    elseif ($prop == char) { 
+      if ($1 == 0) { return Null }
+      var %asc $chr($1)
+      var %asc $replace(%asc,$chr(1),Headerstart,$chr(2),Textstart,$chr(3),Textend,$chr(4),Transmissionend,$chr(5),Enquiry,$chr(6),Acknowledge,$chr(7),Bell,$chr(8),Backspace,$chr(9),Horizontal_TAB,$chr(10),New_Linefeed)
+      var %asc $replace(%asc,$chr(11),Vertical_TAB,$chr(12),New_Page,$chr(13),Carriage_Return,$chr(14),Shift_Out,$chr(15),Shift_In,$chr(16),Delete,$chr(17),Dev._Control1,$chr(18),Dev._Control2,$chr(19),Dev._Control3,$chr(20),Dev._Control4)
+      var %asc $replace(%asc,$chr(21),Neg._Acknowledge,$chr(22),Sychronous_Idle,$chr(23),Transmissionend,$chr(24),Cancel,$chr(25),Mediumend,$chr(26),Substidude,$chr(27),Escape,$chr(28),File_Seperator,$chr(29),Group_Seperator,$chr(30),Record_Seperator)
+      var %asc $replace(%asc,$chr(31),Unit_Seperator,$chr(32),Space,$chr(127),Delete (rubout),$chr(160),Hardspace)
+      return $iif($1 != 95,$replace(%asc,$chr(95),$chr(32)),%asc) 
+    }
+    else { return $base($1,10,10,4) }
+} }
+
+alias -l ascii.search {
+  if ($1) { 
+    if ($asc($1)) && ($len($1) == 1) { ascii.sline $asc($1) | if ($isid) { return  $($ $+ ascTo($asc($1)). $+ $prop,2) } }
+    elseif ($1 isalpha) && ($len($1) > 2) {
+      var %x 0
+      while (%x <= 31) { 
+        if ($1 isin $ascTo(%x).char) { ascii.sline %x | return $iif($isid,$($ $+ ascTo(%x). $+ $prop,2)) }
+        inc %x
+    } }
+    if ($1 isnum 0-255) && ($len($1) == 4) { ascii.sline $1 | if ($isid) { return $iif($isid,$($ $+ ascTo($1). $+ $prop,2)) } }
+    elseif ($len($1) == 3) && ($1 isnum 0-377) { ascii.sline $base($1,8,10) | if ($isid) { return $iif($isid,$($ $+ ascTo($base($1,8,10)). $+ $prop,2)) }  }
+    elseif ($len($1) == 2) {
+      var %x 0
+      while (%x <= 255) {
+        if ($1 == $base(%x,10,16,2)) { ascii.sline %x | return $iif($isid,$iif($isid,$($ $+ ascTo(%x). $+ $prop,2))) }
+        inc %x
+} } } } 
+
+alias -l ascii.sline { if ($window(@ascii)) && ($1 isnum 0-255) { sline @ascii 258 | sline @ascii $calc($1 +3) } }
+
+alias -l ascii.do {
+  if ($window(@ascii)) && ($1) && (!$istok(1.2.259.260.261,$sline(@ascii,1).ln,46))  {
+    if ($1 == A) { clipboard $int($gettok($sline(@ascii,1),1,160)) }
+    elseif ($1 == H) { clipboard $gettok($sline(@ascii,1),2,160) }
+    elseif ($1 == O) { clipboard $int($gettok($sline(@ascii,1),3,160)) }
+    elseif ($1 == C) { clipboard $gettok($sline(@ascii,1),4,160) }
+    elseif ($1 == T) { clipboard $+($chr(38),$chr(35),$int($gettok($sline(@ascii,1),1,160)),$chr(59)) }
+    elseif ($1 == L) { clipboard $remove($gettok($sline(@ascii,1),1-4,160),$chr(160)) }
+    elseif ($1 == F) { ascii.search $input(Enter a valid Ascii Hex Oct or Char:,-eoqs,@Ascii,Ascii / Char Search, $remove($gettok($sline(@ascii,1),1,160),$chr(32))) }
+    elseif ($1 == X) { ascii.close }
+    elseif ($1 == colors) {
+      if ($hget($ascii.hash,@Ascii.colors)) { hdel $ascii.hash @Ascii.colors }
+      else { hadd -m $ascii.hash @Ascii.colors off }
+      hadd $ascii.hash @Ascii $window(@Ascii).x $window(@Ascii).y $window(@Ascii).w $window(@Ascii).h
+      var %l $gettok($sline(@ascii,1),1,160)
+      window -c @Ascii | ascii %l
+    }
+    elseif ($1 == autoclose) {
+      if ($hget($ascii.hash,@Ascii.aclose)) { hdel $ascii.hash @Ascii.aclose }
+      else { hadd -m $ascii.hash @Ascii.aclose 1 }
+    }
+    if ($hget($ascii.hash,@Ascii.aclose)) && (!$istok(colors.autoclose.F.X,$1,46)) { window -c @Ascii }
+} }
+
+alias -l ascii.close {
+  if ($window(@Ascii)) {
+    hadd -m $ascii.hash @Ascii $window(@Ascii).x $window(@Ascii).y $window(@Ascii).w $window(@Ascii).h
+    hsave $ascii.hash $scriptdirAscii.hsh
+    window -c @Ascii
+} }
+
+alias -l ascii.hash { return Ascii.hashtable }
+
+on *:start: { 
+  if (!$hget($ascii.hash)) && ($exists($scriptdirAscii.hsh)) { 
+    hmake $ascii.hash 100 
+    hload $ascii.hash $scriptdirAscii.hsh 
+} }
+
+on *:close:@Ascii: { ascii.close }
+
+on *:keydown:@Ascii:65,67,70,72,76,79,84,88: { ascii.do $keychar }
+
+menu @ascii {
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Copy Ascii (A) $+ $chr(58) $gettok($sline(@ascii,1),1,160)) : ascii.do A
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Copy Hex  (H) $+ $chr(58) $gettok($sline(@ascii,1),2,160)) : ascii.do H
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Copy Oct (O) $+ $chr(58) $gettok($sline(@ascii,1),3,160)) : ascii.do O
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Copy Char (C) $+ $chr(58) $gettok($sline(@ascii,1),4,160)) : ascii.do C
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Copy Html (T) $+ $chr(58) $+($chr(38),$chr(38),$chr(35),$int($gettok($sline(@ascii,1),1,160)),$chr(59))) : ascii.do T
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Copy Line (L) $+ $chr(58) $remove($gettok($sline(@ascii,1),1-4,160),$chr(160))) : ascii.do L
+  $iif($sline(@ascii,1).ln isnum 3-258, -)
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Find.. (F)) : ascii.do F
+  $iif($sline(@ascii,1).ln isnum 3-258, -)
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Colors are $iif($hget($ascii.hash,@Ascii.colors),disabled,enabled)) : ascii.do colors
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Autoclose is $iif($hget($ascii.hash,@Ascii.aclose),enabled,disabled)) : ascii.do autoclose
+  $iif($sline(@ascii,1).ln isnum 3-258, -)
+  $iif($sline(@ascii,1).ln isnum 3-258, $chr(187) Close Window (X)) : ascii.do X
+}

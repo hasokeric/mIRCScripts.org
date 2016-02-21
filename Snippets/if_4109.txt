@@ -1,0 +1,93 @@
+; Why i made this?
+; - I was sick of typing things like if (%1 == %2 && %2 == %3) e. g.
+; - Maybe someone might need it ;)
+; - Limit of tokens is only limited to mIRCs internal max stringlength
+; Usage: 
+; $if(v1,[vN,...,]operator[,v2])[.or]
+;
+; Got Problems with it?
+; - Contact me! ;)
+; - Mail: christopher.russ@gmail.com
+; - Page: http://sephiroth.bounceme.net/
+;
+; Install note:
+; - Add an alias infront of "if" and add it to your remote script files (ALT+R)
+;   or paste it into your alias files (ALT+D)
+; - Should work properly on mIRC 6.16+ (cuz iswmcs was added there)
+;
+; Note:
+; - This snippet doesn't replace /if because it's a protected mIRC alias
+;
+; examples:
+;
+;  - var %var1 = hint,%var2 = h1nt, %var3 = $me
+;    $if(%var1,%var2,%var3,isalnum) 
+;
+;    returns $true if all 3 vars matches the ifrequest
+;    returns $false if your nick is for example [hint]
+;
+;  - var %var1 = $nick(#channel1,$r(1,$nick(#channel1,0))),%var2 = ChanServ
+;    $if(%var1,%var2,!ison,#channel2)
+;
+;    returns $true if the randomnick from #channel1 and ChanServ aren't on #channel2
+;
+;  - var %var1 = 0,%var2 = 3,%var3 = A
+;    $if(%var1,%var2,%var3,isletter).or
+;    returns $true because A is a letter
+;
+; Update:
+;  - Added undocumented if condition operators:
+;    isexcept,ishelp,isinvite,isowner,isvo
+;  - Added $if().or (returns $true if at least one of the if requests is true)
+;  - Added the syntax to the README part
+if {
+  !var %1,%x = 0,%y = $calc($0 -2)
+  !var %2 = $ [ $+ [ $calc($0 -1) ] ]
+  !var %3 = $ [ $+ [ $0 ] ]
+  ; ifthingies ;)
+  ; v2 optional
+  !var %i = isletter,isaop,isavoice,isignore,isprotect,isnum,isletter
+  ; v2 no
+  !var %j = isalnum,isalpha,islower,isupper,ischan,isnotify
+  ; v2 req.
+  !var %k = isin,isincs,iswm,iswmcs,isop,ishop,ison,isvoice,isreg,isban,isauto,isexcept,ishelp,isinvite,isowner,isvo,=,==,===,<,>,<=,>=,//,\\,&
+  ;negate
+  !var %l = !isletter,!isaop,!isavoice,!isignore,!isprotect,!isnum,!isletter
+  !var %m = !isalnum,!isalpha,!islower,!isupper,!ischan,!isnotify
+  !var %n = !isin,!isincs,!iswm,!iswmcs,!isop,!ishop,!ison,!isvoice,!isreg,!isban,!isauto,!isexcept,!ishelp,!isinvite,!isowner,!isvo,!=,!==,!&
+  ; all
+  !var %c = $chr(44)
+  !var %a = $+(%i,%c,%j,%c,%k,%c,%l,%c,%m,%c,%l,%c,%n)
+  !var %req = $+(%k,%c,%n)
+  ; some checks
+  if ($istok(%a,%3,44)) && (!$istok(%req,%2,44)) {
+    %2 = %3
+    !unset %3
+    %y = $calc($0 -1)
+  }
+  ; does it require a v2?
+  if ($istok($+(%k,%c,%n),%2,44)) && (!$var(%3).local) {
+    !echo $color(info) -a * $!if: invalid format
+    !halt
+  }
+  ; is it a known operator?
+  elseif (!$istok(%a,%2,44)) {
+    !echo $color(info) -a * $!if: unknown operator: %2
+    !halt
+  }
+  ; parse the if requests
+  if ($prop == or) {
+    while (%x < %y) {
+      !inc %x
+      if ($var(%3).local) { if ($ [ $+ [ %x ] ] %2 %3) { !return $true } }
+      elseif ($ [ $+ [ %x ] ] %2) { !return $true }
+    }
+    return $false
+  }
+  while (%x < %y) {
+    !inc %x
+    if ($var(%3).local) { if ($ [ $+ [ %x ] ] %2 %3) { } | else { !return $false } }
+    else { if ($ [ $+ [ %x ] ] %2) { } | else { !return $false } }
+  }
+  !return $true
+}

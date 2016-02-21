@@ -1,0 +1,23 @@
+;/bandwidth
+;by blink (29/3/2006)
+;snippet shows your dcc bandwidth
+
+alias bandwidth {
+  var %a = 1,%b,%c,%d,%e,%f
+  while (%a <= $get(0)) {
+    %b = $calc(%b + $get(%a).cps)
+    inc %a
+  }
+  %c = $+($iif($round($calc(%b / 1024),2),$ifmatch,0),kb/s)
+  %a = 1
+  while (%a <= $send(0)) {
+    %d = $calc(%d + $send(%a).cps)
+    inc %a
+  }
+  %e = $+($iif($round($calc(%b / 1024),2),$ifmatch,0),kb/s)
+  %f = $+($round($calc($gettok(%c,1,32) + $gettok(%d,1,32) / 1024),2),kb/s)
+  say (bandwidth) $iif($get(0),in: $get(0) ( $+ %c $+ )) $iif($send(0),out: $send(0) ( $+ %d $+ )) - %f in use.
+}
+menu channel,query {
+  &bandwidth:bandwidth
+}

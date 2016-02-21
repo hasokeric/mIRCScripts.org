@@ -1,0 +1,265 @@
+===============================================================================================
+Talon's SprintF mIRC Alias:
+At a Glance: Brief summary
+===============================================================================================
+
+$sprintf(Format,value1,value2,value3,etc....)
+
+The $sprintf() function returns output according to format and other arguments passed to $sprintf().
+The string format consists of two types of items - characters that will be returned, and format
+commands that define how the other arguments passed to $sprintf() are displayed. Basically, you
+specify a format string that has text in it, as well as "special" characters to map the other
+arguments passed to $sprintf()
+
+===============================================================================================
+"Special" character expressions
+===============================================================================================
+
+~d or ~[N]d	Signed Integer
+~i or ~[N]i	Signed Integer
+~u or ~[N]u	Unsigned Integer
+~o or ~[N]o	Signed octal
+~x or ~[N]x	Unsigned hexadecimal integer 
+~X or ~[N]X	Unsigned hexadecimal integer (capital letters)
+~f or ~[N(.N)]f	Decimal floating point
+~s or ~[N(.N)]s	String
+~e or ~E	Scientific Notation (E is capital E in notation)
+~g or ~G	Return smaller of Scientific Notation or Decimal floating point (G makes scientific notation E)
+
+[N] represents an integer value for size specifications
+[N(.N)] means it accepts an integer or a decimal or an integer and decimal, like 1, or 1.1, or .1
+        see the examples for these to learn how the numbers take a role, it doesnt work the same
+        on every expression.
+
+ok typical c++ behavior of sprintf used % as their variable to replace, but mIRC uses % for
+variables so % has become ~ for mircs version.
+
+===============================================================================================
+KNOWN BUGS/FAQ
+===============================================================================================
+
+Max string format not returning what I want
+string format (~s) if passed a maximum may not return what you may think. This is caused by
+passing control codes to the function. $len() still counts control codes and the numbers for
+a control code such as color, which may cause undesirable results. try to keep your control
+codes inside the format field of $sprintf() and not the passed arguments.
+
+why is my $chr(160) gone?
+Well for starters, mirc doesnt support multiple spaces, so, I used $chr(160) to fill out
+empty spaces for maximum lengh string format. $chr(160) is later converted to "[ctrl+o] [ctrl+o]".
+(ctrl+o is the stop all control codes character) Why did I do this you ask? Simple. this allows
+people to still copy your sprintf results and not have bogus characters, and some fonts chr(160)
+is not blank. keep in mind DO NOT PASS $chr(160) because it will NOT be there when it returns
+back to you.
+
+~c not supported?! what?
+the "~c" format is meant for single character, but mIRC is not picky about what type of variable
+you have so I did not include this, I figured it was a waste of time. use "~s".
+
+~p not supported?! what?
+the "~p" format is meant to be a pointer. mIRC doesnt do pointers. No major point to support
+this format method either.
+
+$sprintf() doesnt work at all!
+note how the bottom of the page says "Alias code segment" key word here is alias. please put this
+into your aliases, or prefix the aliases with "alias " on both the sprintf and sprintconv aliases
+if you MUST have these inside a remote file.
+
+I dont know if you would call it a bug, but in decimal floating point I did not support the #
+feature which "forces" the decimal point even if none is passed, just pass a decimal length to
+always get a decimal point if you want one, say .1 or .2 so you get x.0 or x.00
+
+===============================================================================================
+Examples:
+===============================================================================================
+
+~d and ~[N]d (i is the same thing as d, so no example for i)
+
+	code:	$sprintf(The number is: ~d,1)
+	output:	The Number is: 1
+
+	code:	$sprintf(The number is: ~2d,1)
+	output:	The Number is: 01
+
+
+~u and ~[N]u
+
+	code:	$sprintf(The Absolute value is: ~u,-1)
+	output:	The Absolute value is: 1
+
+	code:	$sprintf(The number is: ~2u,-1)
+	output:	The Absolute value is: 01
+
+
+~o or ~[N]o
+
+	code:	$sprintf(Octal number: ~o,8)
+	output:	Octal number: 10
+
+	code:	$sprintf(Octal number: ~8o,8)
+	output:	Octal number: 00000010
+
+
+~x or ~[N]x (X is the same thing as x, just capital letters, so no example for X)
+
+	code:	$sprintf(Hex number: ~x,1234)
+	output:	Hex number: 4d2
+
+	code:	$sprintf(Hex number: ~8x,1234)
+	output:	Hex number: 000004d2
+
+
+~f or ~[N]f
+
+	code:	$sprintf(float number: ~f,3.14)
+	output:	float number: 3.14
+
+	code:	$sprintf(float number: ~.3f,3.14)
+	output:	float number: 3.140
+
+	code:	$sprintf(float number: ~3.3f,3.14)
+	output:	float number: 003.140
+
+	code:	$sprintf(float number: ~3f,3.14)
+	output:	float number: 003.14
+
+
+~s or ~[N]s
+  NOTE: the [N] value works differently here, lets break it down by x.x, before the dot is minimum length,
+  after the dot is maximum length, so say 3.14 means it will at least be 3 characters long but no more than 14.
+  if it is too small, it uses "[ctrl+o] [ctrl+o]" to make it the correct length, since mirc doesnt support multiple spaces.
+  if it is too long, it chops the beginning characters off to make it the right length unless you use - for reverse!
+  passing a negative value changes from right to left, to left to right. example, $sprintf(~5s,hi) returns "   hi" but 
+  $sprintf(~-5s,hi) returns "hi   " (obviously without the quotes)
+
+	code:	$sprintf(Hi ~s! Whats Up!,Joe)
+	output:	Hi Joe! Whats Up!
+
+	code:	$sprintf(Hi ~3s! Whats Up!,Jo)
+	output:	Hi  Jo! Whats Up!
+
+	code:	$sprintf(Hi ~-3s! Whats Up!,Jo)
+	output:	Hi Jo ! Whats Up!
+
+	code:	$sprintf(~.8s,0123456789)
+	output:	23456789
+
+
+~e and ~E
+
+	code:	$sprintf(~e,27000)
+	output:	27e3
+
+	code:	$sprintf(~E,27000)
+	output:	27E3
+
+	code:	$sprintf(~e,0.00027)
+	output:	2.7e-4
+
+	code:	$sprintf(~E,0.00027)
+	output:	2.7E-4
+
+
+~g and ~G
+
+	code:	$sprintf(~g,27000)
+	output:	27e3
+
+	code:	$sprintf(~G,27000)
+	output:	27E3
+
+	code:	$sprintf(~g,27001)
+	output:	27001
+
+	code:	$sprintf(~G,27001)
+	output:	27001
+
+===============================================================================================
+Multiple Expression Example
+===============================================================================================
+
+This example is text theming for an on text event
+
+	code:	$sprintf(<~s> ~s,$nick,$1-)
+	output:	<Talon> Hi there and thanks for checkin out $sprintf!
+
+===============================================================================================
+Multiple Expression Example #2 (in an alias)
+===============================================================================================
+usage: /shownicks #channel
+
+shownicks {
+  ;======= Find the biggest nickname in the room
+  var %x = 0 , %y = 0 , %biggest = 0 | while (%x < $nick($1,0)) { inc %x | if ($len($nick($1,%x).pnick) > %biggest) { %biggest = $v1 } }
+
+  ;======= Start building our lines with this loop
+  var %x = 0 | while (%x < $nick($1,0)) { inc %x
+
+    ;======= Format our nickname and store it
+    var %append = $sprintf($+(14[12~-1.1s11~-,%biggest,s14]),$remove($nick($1,%x).pnick,$nick($1,%x)),$nick($1,%x))
+
+    ;======= Find out how many nicks will fit in the window in one line
+    if (%y = 0) { 
+      var %wrapcheck = $wrap(%snicks %append,$window($active).font,$window($active).fontsize,$window($active).dw,0)
+      if (%wrapcheck > 1) { %y = $regex(%snicks,/(\[.*?\])/g) }
+    }
+
+    ;======= Echo our line if it's maxed out and reset it
+    if ($regex(%snicks,/(\[.*?\])/g) = %y) && (%y > 0) { echo $active %snicks | %snicks = "" }
+
+    ;======= Store our constructed nicks - not maxed to echo yet
+    var %snicks = %snicks %append
+  }
+
+  ;======= Echo any remaining nicks
+  if (%snicks) { echo $active %snicks }
+}
+
+output:
+[@fugitive        ] [@GreetBot        ] [@HelpBot         ] [@WebChat         ]
+[+KUv             ] [+rickie          ] [ Ambrosia        ] [ Bee_07          ]
+[ billyjoe        ] [ Blice           ] [ CaNaL           ] [ chew\a          ]
+[ Dangerous_Dan   ] [ Danny[NPC]      ] [ DindaCruZ       ] [ F|reWall        ]
+[ Guest44082      ] [ Guest65899      ] [ Guest8659       ] [ Javas           ]
+[ jaytea          ] [ Keiichi         ] [ Keith           ] [ KnightRider     ]
+[ Manit           ] [ NightHawk       ] [ Pleo            ] [ PublicStars     ]
+[ rlr5663         ] [ rockss          ] [ sacher          ] [ Sarten-X        ]
+[ Shadow_Tim      ] [ sirkit          ] [ Slightly_Twisted] [ SoulKeeper      ]
+[ Stealth         ] [ Tabatha         ] [ Talon           ] [ techy[AFK]      ]
+[ Tembakau        ] [ THe_SniPer      ] [ Veil            ]
+
+===============================================================================================
+Alias Code Segment
+===============================================================================================
+
+sprintf { 
+  var %x = 1 , %y = 0 | while (%x < $0) { inc %x | inc %y | var %v. = $+ %y $eval($+($,%x),2) }
+  return $regsubex($1,/~((?:\-)?(?:\d*(?:\.\d+)?)?[dieEfgGosuxX])/g,$sprintconv(\t,$eval($+(%,v.,\n),2))) 
+}
+sprintconv {
+  if ($left($1,1) = -) { var %reverse = $true | tokenize 32 $mid($1-,2) }
+  if ($regex(StrLen,$1,/((?:\d+)?)([diu])/)) { return $base($iif($regml(StrLen,2) = u,$abs($2),$2),10,10,$iif($regml(StrLen,1) > 0,$v1,0)) }
+  if ($regex(StrLen,$1,/((?:\d+)?)o/)) { return $base($2,10,8,$iif($regml(StrLen,1) > 0,$v1,0)) }
+  if ($regex(StrLen,$1,/((?:\d+)?)([xX])/)) { var %return = $base($2,10,16,$iif($regml(StrLen,1) > 0,$v1,0)) | return $iif($iif($regml(StrLen,2),%return,$lower(%return)) }
+  if ($regex(StrLen,$1,/([eEgG])/)) { 
+    if ($int($2) > 0) { var %ret = $regsubex($2,/(0+)$/,$+(e,$len(\1))) }
+    elseif ($regex(SN,$2,/0\.(0+)[1-9]/)) { var %size = $len($regml(SN,1)) + 1 , %ret = $+($calc($2 * (10 ^ %size)),e-,%size) }
+    var %ret = $iif($asc($regml(StrLen,1)) isnum 65-90,$upper(%ret),%ret)
+    if ($regml(StrLen,1) = g) { return $iif($len(%ret) < $len($2),%ret,$2) }
+    return $iif(%ret,$v1,$2)
+  }
+  if ($regex(StrLen,$1,/((?:\d*(?:\.\d+)?)?)([sf])/)) {
+    var %blen = $iif($left($regml(StrLen,1),1) = .,0,$gettok($regml(StrLen,1),1,46)) , %elen = $iif($left($regml(StrLen,1),1) = .,$gettok($regml(StrLen,1),1,46),$gettok($regml(StrLen,1),2,46))
+    if ($regml(StrLen,2) = s) {
+      if (%reverse) { var %beg = $iif($len($2) < %blen,$+($2,$str($chr(160),$calc(%blen - $v1))),$2) }
+      else { var %beg = $iif($len($2) < %blen,$+($str($chr(160),$calc(%blen - $v1)),$2),$2) }
+      return $replace($iif(%elen > 0,$iif(%reverse,$left(%beg,%elen),$right(%beg,%elen)),%beg),$chr(160), ,,)
+    }
+    else {
+      var %beg = $gettok($2,1,46) , %end = $gettok($2,2,46)
+      var %beg = $iif($len(%beg) < %blen,$+($str(0,$calc(%blen - $v1)),%beg),%beg)
+      var %end = $iif($len(%end) < %elen,$+(%end,$str(0,$calc(%elen - $v1))),%end)
+      return %beg $+ $iif(%end != $null,$+(.,%end))
+    }
+  }
+}

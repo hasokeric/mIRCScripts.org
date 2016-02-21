@@ -1,0 +1,52 @@
+; $activecon, $con and $lactivecon by Jigsy.
+;
+; Thanks to Ook for helping me fix a window related bug.
+;
+;
+; To install this file, please copy and paste into remotes, or save and /load -rs P:ath\to\File.ext in any mIRC.
+;
+;
+; Contact:
+; --------
+;
+; If you find any bugs or have any suggestions then feel free to contact me using either method displayed.
+;
+; E-mail: JigsWithoutWoodstock [at] gmail [dot] com
+; IRC:    irc.globalgamers.net:6667 in #Antarctica under the nick "Jigsy". :)
+; Site:   http://jigsy.yi.org/ *or* http://somewhereonthebrinkoftheinternet.cjb.net/
+;
+;
+; Use:
+; ----
+;
+; $activecon  - Returns the active connection number.
+; $con        - Returns the connection number.
+; $lactivecon - Returns the last active connection number.
+;
+; See the examples (Below.) for a more in depth analysis.
+;
+;
+; Examples:
+; ---------
+;
+; Say we have four servers open. (Note: <connection id>/<connection number>)
+;
+; 1/1, 16/2, 28/3, 34/4.
+;
+; Say we click 28/3, then 34/4.
+;
+; //echo -at $activecid / $activecon     returns 34 / 4
+; /scon 2 echo -st $cid / $con           returns 16 / 2 (Only use _ONE_ / ... otherwise you'll evaluate the connection you called it from!)
+; //echo -at $lactivecid / $lactivecon   returns 28 / 3 (Being the first one we clicked.)
+;
+; ... You get the idea.
+;
+
+
+alias activecon { return $findcon($activecid) }
+alias con { return $findcon($cid) }
+alias -l findcon { return $findtok($regsubex($str(.,$scon(0)),/./g,$+($scon(\n),.)),$$1,1,46) }
+alias lactivecon { return $findcon($lactivecid) }
+
+
+; EOF

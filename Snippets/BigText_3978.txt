@@ -1,0 +1,81 @@
+;Created by Hydro, aka [FtUC]Hydro :)
+;format: bigtext Text [$chr(9) ForegroundColor BackgroundColor] [$chr(9) FontSize FontName]
+;colors are control codes! (numbers from 0 to 15)
+;examples:
+;This will print "Tahoma" in Arial font, sized 16, orange text: //BigText Tahoma $chr(9) 07 00 $chr(9) 16 Arial
+;This will print a colorful Enjoy: //BigText 04E07n09j02o13y01!
+;This will print a large spider :) //BigText ! $chr(9) $chr(9) 48 Webdings
+;Enjoy! :)
+
+alias bigtext {
+  if (!$1) {
+    echo -ace info * BigText: Insufficient Parameters.
+    return
+  }
+  tokenize 9 $1-
+  if ($0 == 1) { var %fc = 01, %bc = 00, %fs = 12, %ff = Tahoma }
+  else {
+    if ($3) { var %fc = $gettok($2,1,32), %bc = $gettok($2,2,32), %fs = $gettok($3,1,32), %ff = $gettok($3,2-,32) }
+    else {
+      if ($gettok($2,2-,32) isnum) { var %fc = $gettok($2,1,32), %bc = $gettok($2,2,32), %fs = 12, %ff = Tahoma }
+      else { var %fs = $gettok($2,1,32), %ff = $gettok($2,2-,32), %fc = 01, %bc = 00 }
+    }
+  }
+  if (%bc !isnum 0-15) { %bc = 00 }
+  if (%fc !isnum 0-15) { %fc = 01 }
+  if (!%ff || !$isfontinstalled($qt(%ff))) { %ff = Tahoma }
+  if (!%fs || %fs !isnum) { %fs = 12 }
+  var %text = $1, %i 0, %y 0
+  %fc = $base(%fc,10,10,2)
+  %bc = $base(%bc,10,10,2)
+  window -hp @bigtext
+  drawfill -r @bigtext $color(%bc) $color(%bc) 0 0 
+  drawtext -brp @bigtext $color(%fc) $color(%bc) $qt(%ff) %fs 0 0 %text
+  var %heightend = $height(%text,%ff,%fs) - 1, %widthend = $width(%text,%ff,%fs,0,1) - 1
+  while (%y <= %heightend) {
+    var %x 0, %s = $null
+    while (%x <= %widthend) {
+      var %c = $iif($getdot(@bigtext,%x,%y) != $color(%bc),$coc($v1,%fc),%bc)
+      if (%lc != %c) {
+        var %lc = %c
+        %c = $+($chr(3),%c,$chr(44),%c)
+      }
+      else %c = $null
+      %s = $+(%s,%c,@)
+      inc %x
+    }
+    %s = $+($chr(3),%bc,$chr(44),%bc,@,%s,$chr(3),%bc,$chr(44),%bc,@)
+    if ($regex(%s,/\x03(?! $+ %bc $+ )/)) {
+      .timerbig $+ %i 1 $calc(%i * 2) msg $active %s
+      inc %i
+    }
+    inc %y
+  }
+  window -c @bigtext
+}
+alias coc {
+  var %i 0
+  while (%i < 16) {
+    if ($color(%i) == $1) return $base(%i,10,10,2)
+    inc %i
+  }
+  return $base($2,10,10,2)
+}
+;Alias by praetorian.
+alias isfontinstalled {
+  var %w = @isfontinstalled,%f = isfontinstalled.bmp
+  window -ak0pBfh +d %w -1 -1 200 100
+  drawfill -r %w $rgb(0,0,0) $rgb(0,0,0) 0 0
+  drawtext -r %w $rgb(255,255,255) "this is surely not the name of an installed font" -9 5 5 test.
+  drawsave %w %f
+  var %crc = $crc(%f)
+  clear %w
+  drawfill -r %w $rgb(0,0,0) $rgb(0,0,0) 0 0
+  drawtext -r %w $rgb(255,255,255) $+(",$1,") -9 5 5 test.
+  drawsave %w %f
+  var %crc2 = $crc(%f)
+  .remove %f
+  window -c %w
+  if (%crc != %crc2) { return $true }
+  else { return $false }
+}
